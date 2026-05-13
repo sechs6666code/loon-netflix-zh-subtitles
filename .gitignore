@@ -4,3 +4,4 @@ npm-debug.log*
 Thumbs.db
 coverage/
 .nyc_output/
+.playwright-mcp/
