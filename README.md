@@ -5,7 +5,7 @@
 ## 能做什么
 
 - 支持 WebVTT 和 TTML/IMSC 字幕响应。
-- 支持 DeepL Free、DeepL Pro、Google Cloud Translation Basic v2。
+- 支持免 Key 的 `google_web` 测试模式，也支持 DeepL Free、DeepL Pro、Google Cloud Translation Basic v2。
 - 保留字幕时间轴、cue 设置和常见文本标签。
 - 用 Loon `$persistentStore` 按单句缓存译文，减少重复调用。
 
@@ -27,8 +27,8 @@ https://raw.githubusercontent.com/sechs6666code/loon-netflix-zh-subtitles/main/n
 
 在 Loon 插件参数里配置：
 
-- `provider`: `deepl_free`、`deepl_pro` 或 `google_v2`
-- `apiKey`: 对应翻译服务的 API Key
+- `provider`: `google_web`、`deepl_free`、`deepl_pro` 或 `google_v2`
+- `apiKey`: `google_web` 留空；其他服务填写对应 API Key
 - `targetVariant`: `zh-Hans` 或 `zh-Hant`
 - `debug`: 调试时开启，正常使用建议关闭
 
@@ -41,6 +41,11 @@ https://raw.githubusercontent.com/sechs6666code/loon-netflix-zh-subtitles/main/n
 5. 如果没有出现中文字幕，先把 `debug` 打开，再查看 Loon 日志里是否捕获到字幕响应。
 
 ## 翻译服务
+
+免 API Key：
+
+- `google_web` 使用 Google Translate 网页接口，不需要 API Key。
+- 这个接口不是正式 Cloud Translation API，可能被限流、地区拦截或突然失效；适合先验证字幕链路是否可用。
 
 DeepL：
 
@@ -69,6 +74,7 @@ npm test
 - 翻译失败回退原字幕
 - 缓存命中
 - DeepL/Google 请求体映射
+- google_web 免 Key 请求映射
 - 字幕清单无轨提示检测
 
 ## 发布步骤
@@ -88,7 +94,7 @@ git push -u origin main
 - 插件无法导入：确认 raw URL 可直接打开，且文件名是 `netflix-zh-subtitles.plugin`。
 - 没有字幕变化：确认 Netflix 里已经选择了一个可用字幕轨。
 - 没有脚本日志：确认 `[MITM]` 里包含 `*.netflix.com, *.nflxvideo.net`，并且 Loon 的 MitM/Script 开关已开启。
-- API 报错：确认 provider 与 API Key 类型匹配，例如 DeepL Free Key 必须使用 `deepl_free`。
+- API 报错：确认 provider 与 API Key 类型匹配，例如 DeepL Free Key 必须使用 `deepl_free`；如果没有 Key，先用 `google_web`。
 - 播放中断或字幕消失：关闭插件后重试；本脚本翻译失败时应回退原字幕，不应阻断播放。
 
 ## 隐私

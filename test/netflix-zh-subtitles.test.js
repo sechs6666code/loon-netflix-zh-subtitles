@@ -193,6 +193,58 @@ test("builds Google request mapping", async () => {
   assert.equal(JSON.parse(captured.body).target, "zh-CN");
 });
 
+test("builds Google Web request mapping without an API key", async () => {
+  let captured;
+  const env = makeEnv({
+    async httpGet(options) {
+      captured = options;
+      return {
+        status: 200,
+        body: JSON.stringify([[["你好", "Hello", null, null]]])
+      };
+    }
+  });
+  const options = subtitles.parseArgument({ provider: "google_web", apiKey: "", targetVariant: "zh-Hans" }, env);
+
+  const translated = await subtitles.translateBatchExternal(["Hello"], options, env);
+
+  assert.deepEqual(translated, ["你好"]);
+  assert.equal(options.provider, "google_web");
+  assert.equal(options.apiKey, "");
+  assert.match(captured.url, /^https:\/\/translate\.googleapis\.com\/translate_a\/single\?/);
+  assert.match(captured.url, /client=gtx/);
+  assert.match(captured.url, /tl=zh-CN/);
+  assert.match(captured.url, /q=Hello/);
+});
+
+test("google_web processes subtitle responses without apiKey", async () => {
+  const env = makeEnv({
+    async httpGet() {
+      return {
+        status: 200,
+        body: JSON.stringify([[["你好", "Hello", null, null]]])
+      };
+    }
+  });
+  const body = [
+    "WEBVTT",
+    "",
+    "00:00:01.000 --> 00:00:03.000",
+    "Hello",
+    ""
+  ].join("\n");
+
+  const result = await subtitles.processResponse({
+    request: { url: "https://sub.netflix.com/title.vtt" },
+    response: { status: 200, headers: { "Content-Type": "text/vtt" }, body },
+    argument: { provider: "google_web", apiKey: "", targetVariant: "zh-Hans" },
+    env
+  });
+
+  assert.match(result.body, /你好/);
+  assert.equal(env.notices.length, 0);
+});
+
 test("detects no-subtitle manifests and notifies without mutating response", async () => {
   const env = makeEnv();
   const result = await subtitles.processResponse({

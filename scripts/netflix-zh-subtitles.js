@@ -4,7 +4,7 @@
   var NAME = "Netflix 中文字幕翻译";
   var CACHE_PREFIX = "nfx.zhsub.v1";
   var DEFAULTS = {
-    provider: "deepl_free",
+    provider: "google_web",
     apiKey: "",
     targetVariant: "zh-Hans",
     debug: false,
@@ -14,7 +14,8 @@
   var BATCH_SIZES = {
     deepl_free: 30,
     deepl_pro: 50,
-    google_v2: 100
+    google_v2: 100,
+    google_web: 12
   };
 
   function isLoonRuntime() {
@@ -49,6 +50,27 @@
           }
 
           $httpClient.post(options, function (error, response, data) {
+            if (error) {
+              reject(error instanceof Error ? error : new Error(String(error)));
+              return;
+            }
+
+            resolve({
+              status: response && (response.status || response.statusCode),
+              headers: response && response.headers,
+              body: data
+            });
+          });
+        });
+      },
+      httpGet: function (options) {
+        return new Promise(function (resolve, reject) {
+          if (typeof $httpClient === "undefined" || !$httpClient.get) {
+            reject(new Error("$httpClient.get is unavailable"));
+            return;
+          }
+
+          $httpClient.get(options, function (error, response, data) {
             if (error) {
               reject(error instanceof Error ? error : new Error(String(error)));
               return;
@@ -126,7 +148,7 @@
 
   function normalizeProvider(provider) {
     var value = String(provider || "").trim();
-    if (value === "deepl_pro" || value === "google_v2") return value;
+    if (value === "deepl_pro" || value === "google_v2" || value === "google_web") return value;
     return "deepl_free";
   }
 
@@ -135,10 +157,14 @@
   }
 
   function getTranslatorTarget(provider, targetVariant) {
-    if (provider === "google_v2") {
+    if (provider === "google_v2" || provider === "google_web") {
       return targetVariant === "zh-Hant" ? "zh-TW" : "zh-CN";
     }
     return targetVariant === "zh-Hant" ? "ZH-HANT" : "ZH-HANS";
+  }
+
+  function providerRequiresApiKey(provider) {
+    return provider !== "google_web";
   }
 
   function parseBoolean(value, fallback) {
@@ -199,8 +225,8 @@
 
     debug(env, options, "subtitle format=" + format + " url=" + stripUrlQuery(url));
 
-    if (!options.apiKey && !env.translateBatch) {
-      notifyOnce(env, "missing-api-key", "缺少翻译 API Key", "请在插件参数里填写 DeepL 或 Google API Key。");
+    if (providerRequiresApiKey(options.provider) && !options.apiKey && !env.translateBatch) {
+      notifyOnce(env, "missing-api-key", "缺少翻译 API Key", "请在插件参数里填写 DeepL 或 Google API Key，或把 provider 改为 google_web。");
       return {};
     }
 
@@ -486,12 +512,17 @@
   }
 
   async function translateBatchExternal(texts, options, env) {
-    if (!options.apiKey) throw new Error("missing apiKey");
-    if (!env.httpPost) throw new Error("missing httpPost adapter");
+    if (providerRequiresApiKey(options.provider) && !options.apiKey) throw new Error("missing apiKey");
 
     if (options.provider === "google_v2") {
+      if (!env.httpPost) throw new Error("missing httpPost adapter");
       return translateWithGoogle(texts, options, env);
     }
+    if (options.provider === "google_web") {
+      if (!env.httpGet) throw new Error("missing httpGet adapter");
+      return translateWithGoogleWeb(texts, options, env);
+    }
+    if (!env.httpPost) throw new Error("missing httpPost adapter");
     return translateWithDeepL(texts, options, env);
   }
 
@@ -541,6 +572,31 @@
     var translations = json && json.data && json.data.translations;
     if (!Array.isArray(translations)) throw new Error("Google response missing translations");
     return translations.map(function (item) { return item.translatedText; });
+  }
+
+  async function translateWithGoogleWeb(texts, options, env) {
+    var translations = [];
+    for (var i = 0; i < texts.length; i += 1) {
+      var url = "https://translate.googleapis.com/translate_a/single" +
+        "?client=gtx&sl=auto&dt=t&tl=" + encodeURIComponent(options.translatorTarget) +
+        "&q=" + encodeURIComponent(texts[i]);
+      var response = await env.httpGet({
+        url: url,
+        headers: {
+          "Accept": "application/json,text/plain,*/*",
+          "User-Agent": "Mozilla/5.0"
+        },
+        timeout: options.timeoutMs
+      });
+      assertHttpOk(response, "Google Web Translate");
+
+      var json = safeJsonParse(response.body);
+      if (!json || !Array.isArray(json[0])) throw new Error("Google Web response missing translations");
+      translations.push(json[0].map(function (part) {
+        return Array.isArray(part) ? String(part[0] || "") : "";
+      }).join(""));
+    }
+    return translations;
   }
 
   function assertHttpOk(response, providerName) {
