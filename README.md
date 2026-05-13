@@ -6,6 +6,7 @@
 
 - 支持 WebVTT 和 TTML/IMSC 字幕响应。
 - 支持免 Key 的 `google_web` 测试模式，也支持 DeepL Free、DeepL Pro、Google Cloud Translation Basic v2。
+- 默认把原字幕文本替换为中文字幕，不追加双语行。
 - 保留字幕时间轴、cue 设置和常见文本标签。
 - 用 Loon `$persistentStore` 按单句缓存译文，减少重复调用。
 
@@ -14,7 +15,7 @@
 - 不绕过 Netflix DRM。
 - 不从视频或音频生成字幕。
 - 不保证改写 Netflix App 的字幕菜单名称。
-- 如果影片完全没有任何字幕轨，Loon 脚本通常没有字幕响应可处理，只能保持播放不变。
+- 如果影片完全没有任何字幕轨，Loon 脚本没有字幕响应可处理，只能保持播放不变。
 - 如果 Netflix iOS App 对相关域名启用证书固定导致 MitM 拿不到响应体，本插件无法工作。
 
 ## 安装
@@ -44,7 +45,7 @@ https://raw.githubusercontent.com/sechs6666code/loon-netflix-zh-subtitles/main/n
 
 免 API Key：
 
-- `google_web` 使用 Google Translate 网页接口，不需要 API Key。
+- `google_web` 使用 Google Translate 网页接口，不需要 API Key，并按批次翻译字幕，降低脚本超时概率。
 - 这个接口不是正式 Cloud Translation API，可能被限流、地区拦截或突然失效；适合先验证字幕链路是否可用。
 
 DeepL：

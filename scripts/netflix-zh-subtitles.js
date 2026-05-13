@@ -519,7 +519,7 @@
       return translateWithGoogle(texts, options, env);
     }
     if (options.provider === "google_web") {
-      if (!env.httpGet) throw new Error("missing httpGet adapter");
+      if (!env.httpPost) throw new Error("missing httpPost adapter");
       return translateWithGoogleWeb(texts, options, env);
     }
     if (!env.httpPost) throw new Error("missing httpPost adapter");
@@ -575,26 +575,38 @@
   }
 
   async function translateWithGoogleWeb(texts, options, env) {
-    var translations = [];
-    for (var i = 0; i < texts.length; i += 1) {
-      var url = "https://translate.googleapis.com/translate_a/single" +
-        "?client=gtx&sl=auto&dt=t&tl=" + encodeURIComponent(options.translatorTarget) +
-        "&q=" + encodeURIComponent(texts[i]);
-      var response = await env.httpGet({
-        url: url,
-        headers: {
-          "Accept": "application/json,text/plain,*/*",
-          "User-Agent": "Mozilla/5.0"
-        },
-        timeout: options.timeoutMs
-      });
-      assertHttpOk(response, "Google Web Translate");
+    var markedTexts = texts.map(function (text, index) {
+      return "~" + index + "~" + text;
+    });
+    var response = await env.httpPost({
+      url: "https://translate.google.com/translate_a/single?client=it&dt=qca&dt=t&dt=rmt&dt=bd&dt=rms&dt=sos&dt=md&dt=gt&dt=ld&dt=ss&dt=ex&otf=2&dj=1&hl=en&ie=UTF-8&oe=UTF-8&sl=auto&tl=" + encodeURIComponent(options.translatorTarget),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "GoogleTranslate/6.29.59279 (iPhone; iOS 15.4; en; iPhone14,2)"
+      },
+      body: "q=" + encodeURIComponent(markedTexts.join("\n")),
+      timeout: options.timeoutMs
+    });
+    assertHttpOk(response, "Google Web Translate");
 
-      var json = safeJsonParse(response.body);
-      if (!json || !Array.isArray(json[0])) throw new Error("Google Web response missing translations");
-      translations.push(json[0].map(function (part) {
-        return Array.isArray(part) ? String(part[0] || "") : "";
-      }).join(""));
+    var json = safeJsonParse(response.body);
+    if (!json || !Array.isArray(json.sentences)) throw new Error("Google Web response missing translations");
+
+    var merged = json.sentences.map(function (item) {
+      return item && item.trans ? String(item.trans) : "";
+    }).join("");
+    var mapped = {};
+    var markerPattern = /~(\d+)~\s*([\s\S]*?)(?=~\d+~|$)/g;
+    var match;
+    while ((match = markerPattern.exec(merged)) !== null) {
+      mapped[Number(match[1])] = match[2].replace(/\s+/g, " ").trim();
+    }
+
+    var translations = texts.map(function (text, index) {
+      return mapped[index] || text;
+    });
+    if (translations.some(function (translation, index) { return translation === texts[index]; })) {
+      throw new Error("Google Web response did not preserve subtitle markers");
     }
     return translations;
   }

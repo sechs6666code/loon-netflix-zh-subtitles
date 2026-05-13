@@ -196,11 +196,11 @@ test("builds Google request mapping", async () => {
 test("builds Google Web request mapping without an API key", async () => {
   let captured;
   const env = makeEnv({
-    async httpGet(options) {
+    async httpPost(options) {
       captured = options;
       return {
         status: 200,
-        body: JSON.stringify([[["你好", "Hello", null, null]]])
+        body: JSON.stringify({ sentences: [{ trans: "~0~你好" }] })
       };
     }
   });
@@ -211,18 +211,20 @@ test("builds Google Web request mapping without an API key", async () => {
   assert.deepEqual(translated, ["你好"]);
   assert.equal(options.provider, "google_web");
   assert.equal(options.apiKey, "");
-  assert.match(captured.url, /^https:\/\/translate\.googleapis\.com\/translate_a\/single\?/);
-  assert.match(captured.url, /client=gtx/);
+  assert.match(captured.url, /^https:\/\/translate\.google\.com\/translate_a\/single\?/);
+  assert.match(captured.url, /client=it/);
   assert.match(captured.url, /tl=zh-CN/);
-  assert.match(captured.url, /q=Hello/);
+  assert.equal(captured.headers["Content-Type"], "application/x-www-form-urlencoded");
+  assert.match(captured.body, /^q=/);
+  assert.match(decodeURIComponent(captured.body.slice(2)), /~0~Hello/);
 });
 
 test("google_web processes subtitle responses without apiKey", async () => {
   const env = makeEnv({
-    async httpGet() {
+    async httpPost() {
       return {
         status: 200,
-        body: JSON.stringify([[["你好", "Hello", null, null]]])
+        body: JSON.stringify({ sentences: [{ trans: "~0~你好" }] })
       };
     }
   });
@@ -243,6 +245,22 @@ test("google_web processes subtitle responses without apiKey", async () => {
 
   assert.match(result.body, /你好/);
   assert.equal(env.notices.length, 0);
+});
+
+test("google_web maps multiple marked subtitles from one translated sentence", async () => {
+  const env = makeEnv({
+    async httpPost() {
+      return {
+        status: 200,
+        body: JSON.stringify({ sentences: [{ trans: "~0~你好\n~1~早上好" }] })
+      };
+    }
+  });
+  const options = subtitles.parseArgument({ provider: "google_web", apiKey: "", targetVariant: "zh-Hans" }, env);
+
+  const translated = await subtitles.translateBatchExternal(["こんにちは", "おはようございます"], options, env);
+
+  assert.deepEqual(translated, ["你好", "早上好"]);
 });
 
 test("detects no-subtitle manifests and notifies without mutating response", async () => {
