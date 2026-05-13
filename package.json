@@ -1,0 +1,17 @@
+{
+  "name": "loon-netflix-zh-subtitles",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Loon plugin that translates Netflix subtitle responses to Chinese with DeepL or Google Translate.",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "loon",
+    "netflix",
+    "subtitles",
+    "translation"
+  ],
+  "license": "MIT"
+}

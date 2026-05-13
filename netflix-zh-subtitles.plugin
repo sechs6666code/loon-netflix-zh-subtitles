@@ -1,0 +1,20 @@
+#!name = Netflix 中文字幕翻译
+#!desc = 自动把 Netflix iOS App 下载到的可用字幕响应翻译为中文。需要 Loon MitM、脚本功能和 DeepL 或 Google Translate API Key；不支持无字幕源的影片。
+#!author = Codex
+#!homepage = https://github.com/<GitHubOwner>/loon-netflix-zh-subtitles
+#!icon = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
+#!system = iOS,iPadOS
+#!loon_version = 3.2.1(733)
+#!tag = Netflix,字幕,翻译
+
+[Argument]
+provider = select,"deepl_free","deepl_pro","google_v2",tag=翻译服务,desc=deepl_free 使用 DeepL Free API；deepl_pro 使用 DeepL Pro API；google_v2 使用 Google Cloud Translation Basic v2。
+apiKey = input,"",tag=API Key,desc=填写 DeepL Auth Key 或 Google Cloud Translation API Key。不要把 Key 提交到 GitHub。
+targetVariant = select,"zh-Hans","zh-Hant",tag=目标中文,desc=zh-Hans 为简体中文；zh-Hant 为繁体中文。
+debug = switch,false,tag=调试日志,desc=开启后会在 Loon 日志里输出字幕识别、翻译批次和回退信息。
+
+[Script]
+http-response ^https?:\/\/([^\/]+\.)?(netflix\.com|nflxvideo\.net)\/.* script-path=https://raw.githubusercontent.com/<GitHubOwner>/loon-netflix-zh-subtitles/main/scripts/netflix-zh-subtitles.js, requires-body=true, timeout=60, binary-body-mode=false, tag=Netflix 中文字幕翻译, argument=[{provider},{apiKey},{targetVariant},{debug}], enable=true
+
+[MITM]
+hostname = *.netflix.com, *.nflxvideo.net
