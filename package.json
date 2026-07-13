@@ -1,0 +1,14 @@
+{
+  "name": "chonglema",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "test": "node tests/recovery-module.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "vite": "^7.0.0"
+  }
+}
