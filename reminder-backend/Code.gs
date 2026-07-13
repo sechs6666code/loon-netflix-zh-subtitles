@@ -1,6 +1,10 @@
 const CONFIG = {
   // 部署前改成至少 12 位、只有自己知道的随机字符串。
   PIN: "CHANGE_THIS_TO_A_LONG_RANDOM_PIN",
+  // 在 Resend 后台创建“Sending access”权限的 API Key，并粘贴到这里。
+  RESEND_API_KEY: "re_CHANGE_THIS_TO_YOUR_RESEND_API_KEY",
+  // 未验证自有域名时，只能使用 onboarding@resend.dev 发给 Resend 账号邮箱。
+  FROM_EMAIL: "个人习惯记录 <onboarding@resend.dev>",
   SITE_URL: "https://sechs6666code.github.io/chonglema/",
 };
 
@@ -15,6 +19,9 @@ const KEYS = {
 function setupReminderBackend() {
   if (!CONFIG.PIN || CONFIG.PIN.indexOf("CHANGE_THIS") === 0 || CONFIG.PIN.length < 12) {
     throw new Error("请先把 CONFIG.PIN 改成至少 12 位的随机字符串。");
+  }
+  if (!CONFIG.RESEND_API_KEY || CONFIG.RESEND_API_KEY.indexOf("re_CHANGE_THIS") === 0) {
+    throw new Error("请先填写 Resend API Key。");
   }
 
   ScriptApp.getProjectTriggers()
@@ -84,14 +91,14 @@ function configureReminder(payload) {
     properties.deleteProperty(KEYS.lastSent);
   }
 
-  MailApp.sendEmail({
+  sendEmailThroughResend({
     to: email,
     subject: enabled ? "每日提醒已开启" : "每日提醒已关闭",
-    body: enabled
+    text: enabled
       ? "每日提醒已开启，提醒时间为 " + time + "（" + timezone + "）。"
       : "每日提醒已经关闭。",
-    htmlBody: settingsEmailHtml(enabled, time, timezone),
-    name: "个人习惯记录",
+    html: settingsEmailHtml(enabled, time, timezone),
+    idempotencyKey: "reminder-settings-" + new Date().getTime(),
   });
 
   return jsonOutput({ ok: true, enabled: enabled });
@@ -102,12 +109,12 @@ function sendTestEmail(payload) {
   const time = validateTime(payload.time);
   const timezone = validateTimezone(payload.timezone);
 
-  MailApp.sendEmail({
+  sendEmailThroughResend({
     to: email,
     subject: "测试邮件｜每日提醒",
-    body: "测试成功。之后会在每天 " + time + "（" + timezone + "）发送提醒。",
-    htmlBody: reminderEmailHtml("测试成功", "邮件提醒已经连接。", time, timezone),
-    name: "个人习惯记录",
+    text: "测试成功。之后会在每天 " + time + "（" + timezone + "）发送提醒。",
+    html: reminderEmailHtml("测试成功", "邮件提醒已经连接。", time, timezone),
+    idempotencyKey: "reminder-test-" + new Date().getTime(),
   });
 
   return jsonOutput({ ok: true });
@@ -127,17 +134,17 @@ function reminderTick() {
   const localTime = Utilities.formatDate(now, timezone, "HH:mm");
   if (localTime < time || properties.getProperty(KEYS.lastSent) === localDate) return;
 
-  MailApp.sendEmail({
+  sendEmailThroughResend({
     to: email,
     subject: "今天记一下",
-    body: "花十秒钟记录今天。记录改变，而不是审判自己。\n\n" + CONFIG.SITE_URL,
-    htmlBody: reminderEmailHtml(
+    text: "花十秒钟记录今天。记录改变，而不是审判自己。\n\n" + CONFIG.SITE_URL,
+    html: reminderEmailHtml(
       "今天记一下",
       "花十秒钟记录今天。记录改变，而不是审判自己。",
       time,
       timezone
     ),
-    name: "个人习惯记录",
+    idempotencyKey: "daily-reminder-" + localDate,
   });
 
   properties.setProperty(KEYS.lastSent, localDate);
@@ -162,6 +169,33 @@ function settingsEmailHtml(enabled, time, timezone) {
     ? "之后会在每天 " + time + " 左右发送一封提醒邮件。"
     : "设置已经保留，需要时可以再次开启。";
   return reminderEmailHtml(title, message, time, timezone);
+}
+
+function sendEmailThroughResend(message) {
+  const response = UrlFetchApp.fetch("https://api.resend.com/emails", {
+    method: "post",
+    contentType: "application/json",
+    headers: {
+      Authorization: "Bearer " + CONFIG.RESEND_API_KEY,
+      "Idempotency-Key": message.idempotencyKey,
+    },
+    payload: JSON.stringify({
+      from: CONFIG.FROM_EMAIL,
+      to: [message.to],
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+    }),
+    muteHttpExceptions: true,
+  });
+
+  const status = response.getResponseCode();
+  const body = response.getContentText();
+  if (status < 200 || status >= 300) {
+    throw new Error("Resend 发信失败（" + status + "）：" + body);
+  }
+
+  return JSON.parse(body || "{}");
 }
 
 function validateEmail(value) {

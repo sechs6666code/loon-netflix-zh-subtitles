@@ -104,7 +104,7 @@
 
           <details class="reminder-backend" ${settings.endpoint ? "" : "open"}>
             <summary>首次连接邮件服务</summary>
-            <p>先按照设置指南部署一次免费的邮件后台，然后把地址与安全 PIN 填在这里。</p>
+            <p>先按照设置指南连接 Resend 邮件后台，然后把地址与安全 PIN 填在这里。</p>
             <label class="reminder-field">
               <span>Apps Script 后台地址</span>
               <input name="endpoint" type="url" inputmode="url" required placeholder="https://script.google.com/macros/s/.../exec">
