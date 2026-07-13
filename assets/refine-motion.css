@@ -183,6 +183,218 @@ body {
   font-size: 11px;
 }
 
+/* 12 · Monthly distribution: optical centering, depth and data states */
+.streak-card {
+  --pie-card-mint: rgba(49, 198, 139, .14);
+  --pie-card-warm: rgba(237, 116, 104, .045);
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, #fff 88%, var(--line));
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--solid) 94%, transparent),
+      color-mix(in srgb, var(--solid) 76%, transparent));
+  box-shadow:
+    0 20px 60px rgba(56, 87, 71, .105),
+    inset 0 1px rgba(255, 255, 255, .98),
+    inset 0 -1px rgba(83, 110, 96, .035);
+  transition:
+    border-color 320ms ease,
+    box-shadow 420ms var(--motion-soft),
+    background 420ms var(--motion-soft);
+}
+
+.streak-card[data-health="strong"] {
+  --pie-card-mint: rgba(49, 198, 139, .18);
+  --pie-card-warm: rgba(237, 116, 104, .018);
+}
+
+.streak-card[data-health="strong"][data-has-yes="true"] {
+  --pie-card-warm: rgba(237, 116, 104, .055);
+}
+
+.streak-card[data-health="mixed"] {
+  --pie-card-mint: rgba(49, 198, 139, .105);
+  --pie-card-warm: rgba(237, 116, 104, .085);
+}
+
+.streak-card::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -36% -18%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 21% 42%, var(--pie-card-mint), transparent 34%),
+    radial-gradient(circle at 83% 76%, var(--pie-card-warm), transparent 29%);
+  opacity: .92;
+  transform: translateZ(0);
+  transition: background 420ms ease, opacity 420ms ease;
+}
+
+.streak-card::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(126deg, rgba(255, 255, 255, .28), transparent 34% 70%, rgba(255, 255, 255, .08));
+  opacity: .62;
+}
+
+.streak-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.pie-chart {
+  position: relative;
+  isolation: isolate;
+  background: var(--line);
+  box-shadow:
+    0 14px 34px rgba(56, 87, 71, .12),
+    0 2px 8px rgba(56, 87, 71, .06),
+    inset 0 0 0 1px rgba(255, 255, 255, .32);
+  transform: translateZ(0);
+  transition:
+    transform 220ms var(--motion-spring),
+    filter 260ms ease,
+    box-shadow 320ms ease;
+  will-change: background, transform;
+}
+
+.pie-chart.is-highlighted {
+  animation: pieFocus 360ms var(--motion-spring);
+  box-shadow:
+    0 18px 42px rgba(56, 87, 71, .17),
+    0 4px 10px rgba(56, 87, 71, .075),
+    inset 0 0 0 1px rgba(255, 255, 255, .45);
+}
+
+.pie-center {
+  position: relative;
+  z-index: 2;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding-top: 1px;
+  background: color-mix(in srgb, var(--solid) 96%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--line) 88%, transparent),
+    0 3px 11px rgba(48, 68, 59, .055);
+}
+
+.pie-value {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  line-height: .82;
+  transform: translateY(1px);
+}
+
+.pie-center .pie-value strong {
+  line-height: .82;
+}
+
+.pie-center .pie-value > small {
+  margin-left: 3px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.pie-center-label {
+  display: block;
+  margin: 0;
+  color: color-mix(in srgb, var(--muted) 86%, transparent);
+  font-size: 8px;
+  font-weight: 620;
+  letter-spacing: .02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pie-legend span {
+  min-height: 38px;
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    opacity 220ms ease,
+    color 220ms ease,
+    background 220ms ease,
+    border-color 220ms ease,
+    transform 160ms var(--motion-spring);
+}
+
+.pie-legend span:hover,
+.pie-legend span:focus-visible {
+  color: var(--text);
+  background: color-mix(in srgb, var(--solid) 70%, transparent);
+  border-color: color-mix(in srgb, var(--line) 84%, transparent);
+  outline: none;
+}
+
+.pie-legend span:active {
+  transform: scale(.96);
+}
+
+.pie-legend[data-active="no"] .no,
+.pie-legend[data-active="yes"] .yes {
+  color: var(--text);
+  background: color-mix(in srgb, var(--solid) 84%, transparent);
+  border-color: color-mix(in srgb, currentColor 12%, transparent);
+  box-shadow: 0 6px 16px rgba(56, 87, 71, .08);
+}
+
+.pie-legend[data-active="no"] .yes,
+.pie-legend[data-active="yes"] .no {
+  opacity: .42;
+}
+
+.pie-data-changing .pie-legend,
+.pie-data-changing .pie-center {
+  animation: pieContentSettle 420ms var(--motion-spring);
+}
+
+.month-data-next,
+.month-data-prev {
+  will-change: transform, opacity, filter;
+}
+
+.month-data-next {
+  animation: monthDataNext 380ms var(--motion-spring) both;
+}
+
+.month-data-prev {
+  animation: monthDataPrev 380ms var(--motion-spring) both;
+}
+
+@keyframes pieFocus {
+  0% { transform: scale(1); }
+  52% { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pieContentSettle {
+  0% { opacity: .55; transform: translateY(4px); }
+  62% { opacity: 1; transform: translateY(-1px); }
+  100% { transform: none; }
+}
+
+@keyframes monthDataNext {
+  from { opacity: .2; transform: translateX(16px); filter: blur(2px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+@keyframes monthDataPrev {
+  from { opacity: .2; transform: translateX(-16px); filter: blur(2px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
 /* 5 · Horizontal month gesture, edge previews and a spring return */
 .history {
   overflow: hidden;
@@ -451,11 +663,30 @@ body {
   .pie-center {
     width: 64px;
     height: 64px;
+    gap: 2px;
+    padding-top: 0;
+  }
+
+  .pie-center .pie-value strong {
+    font-size: 22px;
+  }
+
+  .pie-center-label {
+    font-size: 7px;
   }
 
   .pie-legend,
   .ring-side .milestone-note {
     font-size: 10px;
+  }
+
+  .pie-legend {
+    gap: 3px;
+  }
+
+  .pie-legend span {
+    min-height: 36px;
+    padding: 7px 6px;
   }
 
   .stat-card > span {
@@ -502,7 +733,12 @@ body {
   .history-panel,
   .motion-card,
   .motion-number-changing,
-  .motion-today-pulse {
+  .motion-today-pulse,
+  .pie-chart,
+  .pie-data-changing .pie-legend,
+  .pie-data-changing .pie-center,
+  .month-data-next,
+  .month-data-prev {
     animation: none !important;
     transition-duration: .01ms !important;
   }
