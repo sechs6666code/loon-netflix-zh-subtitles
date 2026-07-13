@@ -38,6 +38,7 @@
 }
 
 .recovery-summary {
+  display: block;
   width: 100%;
   padding: 28px 30px 26px;
   border: 0;

@@ -449,35 +449,35 @@
     section.className = "recovery-module";
     section.setAttribute("aria-label", "蛋蛋恢复仓");
     section.innerHTML = `
-      <button class="recovery-summary" type="button" aria-expanded="false" aria-controls="recovery-details">
-        <span class="recovery-header">
-          <span class="recovery-heading">
+      <div class="recovery-summary" role="button" tabindex="0" aria-expanded="false" aria-controls="recovery-details">
+        <div class="recovery-header">
+          <div class="recovery-heading">
             <span class="recovery-kicker">恢复趋势</span>
             <h2>蛋蛋恢复仓</h2>
             <p>把看不见的恢复，变成看得见的进度</p>
-          </span>
+          </div>
           <span class="recovery-expand-label">展开</span>
-        </span>
+        </div>
 
-        <span class="recovery-visual">
-          <span class="recovery-vessel-stage" aria-hidden="true">
-            <span class="recovery-liquid-mask">
-              <span class="recovery-liquid-fill"></span>
-            </span>
+        <div class="recovery-visual">
+          <div class="recovery-vessel-stage" aria-hidden="true">
+            <div class="recovery-liquid-mask">
+              <div class="recovery-liquid-fill"></div>
+            </div>
             <img class="recovery-vessel-shell" src="./assets/recovery-vessel.png" alt="">
-            <span class="recovery-percent">
+            <div class="recovery-percent">
               <span class="recovery-percent-value"><span class="recovery-percent-number">--</span><small>%</small></span>
               <span class="recovery-percent-label">恢复进度</span>
-            </span>
-          </span>
+            </div>
+          </div>
           <span class="recovery-status-pill">读取记录中</span>
-        </span>
+        </div>
 
-        <span class="recovery-summary-copy">
+        <div class="recovery-summary-copy">
           <p class="recovery-summary-line">正在计算恢复趋势。</p>
           <span class="recovery-next-compact">轻点查看详细数据</span>
-        </span>
-      </button>
+        </div>
+      </div>
 
       <div class="recovery-details" id="recovery-details">
         <div class="recovery-details-inner">
@@ -564,7 +564,14 @@
     toast.setAttribute("aria-live", "polite");
     document.body.append(toast);
 
-    moduleElement.querySelector(".recovery-summary")?.addEventListener("click", () => toggleDetails());
+    const summary = moduleElement.querySelector(".recovery-summary");
+    summary?.addEventListener("click", () => toggleDetails());
+    summary?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggleDetails();
+      }
+    });
     moduleElement.querySelector(".recovery-edit-button")?.addEventListener("click", openEditor);
     editorElement.querySelector(".recovery-editor-close")?.addEventListener("click", closeEditor);
     editorElement.querySelector(".recovery-editor-save")?.addEventListener("click", saveManualTime);
