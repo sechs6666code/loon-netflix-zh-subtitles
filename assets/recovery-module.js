@@ -8,6 +8,7 @@
   const MOTION_CALIBRATION_COUNT = 7;
   const MOTION_TILT_GAIN = 1.2;
   const MOTION_TILT_LIMIT = 32;
+  const RECOVERY_VESSEL_ASPECT = 894 / 760;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const lowPerformanceDevice =
     (Number(navigator.hardwareConcurrency) > 0 && Number(navigator.hardwareConcurrency) <= 4) ||
@@ -45,6 +46,7 @@
   let releaseState = null;
   let recordsSnapshot = "";
   let currentProgress = null;
+  let currentVisualLevel = 0;
   let toastTimer = 0;
   let feedbackTimer = 0;
   let motionHintTimer = 0;
@@ -419,12 +421,14 @@
 
     const unit = moduleElement.querySelector(".recovery-percent-value small");
     if (!releaseState) {
+      currentVisualLevel = 0;
       moduleElement.classList.add("is-empty");
       moduleElement.classList.remove("is-stable");
       moduleElement.classList.add("is-depleted");
       moduleElement.style.setProperty("--recovery-level", "0%");
       moduleElement.style.setProperty("--recovery-level-left", "0%");
       moduleElement.style.setProperty("--recovery-level-right", "0%");
+      applyLiquidSurface();
       moduleElement.classList.remove("has-submerged-number");
       if (unit) unit.hidden = true;
       animatePercentage(null);
@@ -458,6 +462,7 @@
     moduleElement.classList.toggle("has-submerged-number", progress >= 55);
 
     const visualLevel = clamp(progress * .94, 0, 94);
+    currentVisualLevel = visualLevel;
     const chamberDifference = progress < 2 ? 0 : clamp(.72 - progress * .0045, .24, .72);
     const leftLevel = clamp(visualLevel - chamberDifference * .45, 0, 94);
     const rightLevel = clamp(visualLevel + chamberDifference * .55, 0, 94);
@@ -466,6 +471,7 @@
       moduleElement.style.setProperty("--recovery-level", `${visualLevel.toFixed(2)}%`);
       moduleElement.style.setProperty("--recovery-level-left", `${leftLevel.toFixed(2)}%`);
       moduleElement.style.setProperty("--recovery-level-right", `${rightLevel.toFixed(2)}%`);
+      applyLiquidSurface();
     });
 
     animatePercentage(progress);
@@ -572,6 +578,32 @@
     }
   }
 
+  function applyLiquidSurface() {
+    if (!moduleElement) return;
+
+    const liquidPercent = clamp(currentVisualLevel, 0, 100);
+    const airPercent = 100 - liquidPercent;
+    const radians = motionCurrent.tilt * Math.PI / 180;
+    const slope = Math.tan(radians) * RECOVERY_VESSEL_ASPECT * 100;
+    const halfRange = Math.abs(slope) / 2;
+    let center = airPercent;
+
+    // Keep both lobes on one continuous surface and preserve the apparent
+    // amount of liquid when an extreme angle reaches the vessel boundary.
+    if (halfRange > .001 && airPercent < halfRange) {
+      center = 2 * Math.sqrt(airPercent * halfRange) - halfRange;
+    } else if (halfRange > .001 && liquidPercent < halfRange) {
+      center = 100 - 2 * Math.sqrt(liquidPercent * halfRange) + halfRange;
+    }
+
+    const left = clamp(center - slope / 2, 0, 100);
+    const middle = clamp(center, 0, 100);
+    const right = clamp(center + slope / 2, 0, 100);
+    moduleElement.style.setProperty("--recovery-surface-left", `${left.toFixed(2)}%`);
+    moduleElement.style.setProperty("--recovery-surface-center", `${middle.toFixed(2)}%`);
+    moduleElement.style.setProperty("--recovery-surface-right", `${right.toFixed(2)}%`);
+  }
+
   function applyMotionVariables() {
     if (!moduleElement) return;
     moduleElement.style.setProperty("--recovery-liquid-tilt", `${motionCurrent.tilt.toFixed(2)}deg`);
@@ -594,6 +626,7 @@
     moduleElement.style.setProperty("--recovery-particle-drift-near", `${(-motionCurrent.particleX * .56).toFixed(2)}px`);
     moduleElement.style.setProperty("--recovery-motion-energy", motionCurrent.surge.toFixed(3));
     moduleElement.style.setProperty("--recovery-caustic-opacity", (.62 + motionCurrent.surge * .18).toFixed(3));
+    applyLiquidSurface();
   }
 
   function resetMotionVariables(immediate = false) {
