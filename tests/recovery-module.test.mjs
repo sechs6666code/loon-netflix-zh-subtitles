@@ -155,8 +155,13 @@ const portraitTilt = Number.parseFloat(motionModule.style.getPropertyValue("--re
 const portraitShift = Number.parseFloat(motionModule.style.getPropertyValue("--recovery-motion-x"));
 assert.ok(portraitTilt < 0, "the liquid surface should counter-rotate against a positive portrait tilt");
 assert.ok(portraitShift > 0, "the liquid mass should still shift toward the physically lower side");
-assert.match(source, /const MOTION_TILT_GAIN = \.28;/, "the liquid tilt gain should be doubled");
-assert.match(source, /const MOTION_TILT_LIMIT = 9\.6;/, "the liquid tilt limit should be doubled");
+assert.match(source, /const MOTION_TILT_GAIN = 1\.2;/, "the liquid should use an intentionally exaggerated tilt gain");
+assert.match(source, /const MOTION_TILT_LIMIT = 32;/, "the liquid should allow a visibly wide tilt range");
+assert.doesNotMatch(
+  source,
+  /deltaSide \* MOTION_TILT_GAIN \* mobility/,
+  "recovery progress should not suppress the liquid surface angle"
+);
 
 const calibrateButton = motionModule.querySelector(".recovery-calibrate-button");
 assert.equal(calibrateButton.disabled, false, "calibration should be available while motion is enabled");
