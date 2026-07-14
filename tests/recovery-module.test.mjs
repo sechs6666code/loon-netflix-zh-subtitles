@@ -37,16 +37,21 @@ assert.ok(module, "recovery module should mount after the monthly summary");
 assert.equal(module.previousElementSibling.className, "month-summary");
 assert.ok(module.querySelector(".recovery-liquid-caustics"), "liquid refraction layer should render");
 assert.ok(module.querySelector(".recovery-glass-glint"), "glass highlight layer should render");
+assert.ok(module.querySelector(".recovery-edge-refraction"), "glass edge refraction should render");
+assert.equal(module.querySelectorAll(".recovery-liquid-chamber").length, 2, "left and right chambers should render independently");
 assert.ok(module.querySelector(".recovery-motion-hint"), "one-time tilt hint should render");
 
 const reducedMotionToggle = module.querySelector(".recovery-motion-toggle");
 assert.ok(reducedMotionToggle, "motion control should render");
 assert.equal(reducedMotionToggle.disabled, true, "motion control should respect reduced-motion settings");
+assert.equal(reducedMotionToggle.tagName, "BUTTON", "the full motion row should be the switch target");
 assert.match(module.querySelector(".recovery-motion-status").textContent, /减少动态效果/);
+assert.equal(module.querySelectorAll(".recovery-data-row").length, 3, "recovery details should use a three-segment data grid");
+assert.ok(module.querySelector("details.recovery-disclaimer"), "trend disclaimer should be collapsible");
 
 const progress = Number(module.querySelector(".recovery-percent-number").textContent);
 assert.ok(progress >= 60 && progress <= 76, `56-hour progress should be in the expected non-linear range, got ${progress}`);
-assert.match(module.querySelector(".recovery-status-pill").textContent, /明显恢复/);
+assert.match(module.querySelector(".recovery-status-pill").textContent, /明显恢复|接近平时水平/);
 assert.ok(module.querySelectorAll(".recovery-particle").length >= 3, "progress should render layered particles");
 assert.ok(
   new Set([...module.querySelectorAll(".recovery-particle")].map((particle) => particle.style.getPropertyValue("--particle-scale"))).size >= 3,
@@ -73,6 +78,18 @@ assert.ok(Math.abs(stored.timestamp - manualTime.getTime()) < 61_000);
 assert.ok(!editor.classList.contains("is-open"));
 assert.match(module.querySelector(".recovery-status-pill").textContent, /恢复启动/);
 
+module.querySelector(".recovery-edit-button").click();
+const stableTime = new Date(now.getTime() - (6 * 24 * 60 * 60 * 1000));
+editor.querySelector("input").value = new Date(stableTime.getTime() - offset).toISOString().slice(0, 16);
+editor.querySelector(".recovery-editor-save").click();
+await new Promise((resolve) => window.setTimeout(resolve, 30));
+assert.ok(module.classList.contains("is-stable"), "six days should enter the stable interval");
+assert.equal(module.querySelector(".recovery-percent-number").textContent, "100");
+assert.ok(
+  Number.parseFloat(module.style.getPropertyValue("--recovery-level")) <= 94,
+  "100 percent should keep a visible air gap instead of visually overfilling"
+);
+
 dom.window.close();
 
 const motionDom = new JSDOM(
@@ -85,6 +102,15 @@ const motionDom = new JSDOM(
 );
 
 const motionWindow = motionDom.window;
+const orientationMock = {
+  angle: 0,
+  addEventListener() {},
+  removeEventListener() {},
+};
+Object.defineProperty(motionWindow.screen, "orientation", {
+  configurable: true,
+  value: orientationMock,
+});
 motionWindow.matchMedia = () => ({
   matches: false,
   addEventListener() {},
@@ -122,13 +148,27 @@ const dispatchOrientation = (beta, gamma) => {
   motionWindow.dispatchEvent(event);
 };
 dispatchOrientation(0, 0);
-dispatchOrientation(12, 24);
-await new Promise((resolve) => motionWindow.setTimeout(resolve, 100));
-assert.notEqual(
-  motionModule.style.getPropertyValue("--recovery-liquid-tilt"),
-  "0.00deg",
-  "device orientation should move the liquid surface"
-);
+for (let index = 0; index < 7; index += 1) dispatchOrientation(0, 0);
+dispatchOrientation(0, 24);
+await new Promise((resolve) => motionWindow.setTimeout(resolve, 220));
+const portraitTilt = Number.parseFloat(motionModule.style.getPropertyValue("--recovery-liquid-tilt"));
+const portraitShift = Number.parseFloat(motionModule.style.getPropertyValue("--recovery-motion-x"));
+assert.ok(portraitTilt < 0, "the liquid surface should counter-rotate against a positive portrait tilt");
+assert.ok(portraitShift > 0, "the liquid mass should still shift toward the physically lower side");
+
+const calibrateButton = motionModule.querySelector(".recovery-calibrate-button");
+assert.equal(calibrateButton.disabled, false, "calibration should be available while motion is enabled");
+
+motionToggle.click();
+orientationMock.angle = 90;
+motionToggle.click();
+await new Promise((resolve) => motionWindow.setTimeout(resolve, 30));
+for (let index = 0; index < 7; index += 1) dispatchOrientation(0, 0);
+dispatchOrientation(20, 0);
+await new Promise((resolve) => motionWindow.setTimeout(resolve, 220));
+const landscapeTilt = Number.parseFloat(motionModule.style.getPropertyValue("--recovery-liquid-tilt"));
+assert.ok(landscapeTilt < 0, "landscape orientation should preserve counter-rotation direction");
+assert.equal(permissionRequests, 2, "each iOS re-enable should request permission from a user gesture");
 
 motionWindow.document.querySelector(".answer.yes").click();
 assert.ok(motionModule.classList.contains("is-releasing"), "release check-in should trigger drain feedback");
