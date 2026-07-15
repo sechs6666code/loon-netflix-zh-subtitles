@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "node tests/recovery-module.test.mjs && node tests/refine-motion.test.mjs"
+    "test": "node tests/recovery-module.test.mjs && node tests/refine-motion.test.mjs && node tests/leaderboard-core.test.mjs && node tests/leaderboard-module.test.mjs && node tests/leaderboard-worker.test.mjs"
   },
   "devDependencies": {
     "jsdom": "^29.1.1",

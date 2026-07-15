@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chonglema-leaderboard",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-15",
+  "vars": {
+    "ALLOWED_ORIGINS": "https://sechs6666code.github.io,http://localhost:5173,http://127.0.0.1:5173,http://terminal.local:5173"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "chonglema-leaderboard",
+      "database_id": "replace-with-your-d1-database-id",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
