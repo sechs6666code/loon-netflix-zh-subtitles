@@ -3,7 +3,7 @@ import {
   PROFILE_KEY,
   RANK_SNAPSHOT_KEY,
   RECORDS_KEY,
-  calculateStreaks,
+  calculateLongestStreaks,
   createRecoveryCode,
   localDateKey,
   milestoneState,
@@ -66,7 +66,7 @@ import {
 
   const profileKey = (value) => String(value || "").normalize("NFC").toLocaleLowerCase("zh-CN");
 
-  const scores = () => calculateStreaks(readRecords());
+  const scores = () => calculateLongestStreaks(readRecords());
 
   function currentRanks() {
     const findRank = (entries) => {
@@ -201,12 +201,12 @@ import {
       <span class="leaderboard-inline-icon">${trophyIcon}</span>
       <span class="leaderboard-inline-copy">
         <small>双榜排行</small>
-        <strong>看看今天谁在坚持</strong>
+        <strong>看看大家的最佳纪录</strong>
         <em data-leaderboard-inline-status>公开由您决定 · 日历不会上传</em>
       </span>
       <span class="leaderboard-inline-scores" aria-hidden="true">
-        <span><b data-leaderboard-inline-ninja>0</b><small>忍住</small></span>
-        <span><b data-leaderboard-inline-rush>0</b><small>连冲</small></span>
+        <span><b data-leaderboard-inline-ninja>0</b><small>忍住最长</small></span>
+        <span><b data-leaderboard-inline-rush>0</b><small>连冲最长</small></span>
       </span>
       <span class="leaderboard-inline-cta">查看双榜</span>`;
     button.addEventListener("click", (event) => openDialog(event.currentTarget));
@@ -232,12 +232,27 @@ import {
         <div class="leaderboard-scroll">
           <section class="leaderboard-privacy">
             <span>${shieldIcon}</span>
-            <div><b>只公开最少数据</b><p>日历和打卡日期不会上传；公开时仅同步 ID 与两项连续天数。</p></div>
+            <div><b>只公开最少数据</b><p>日历和打卡日期不会上传；公开时仅同步 ID 与两项历史最长连续天数。</p></div>
           </section>
 
-          <section class="leaderboard-local-scores" aria-label="我的当前连续天数">
-            <article><span>忍者榜</span><strong data-leaderboard-ninja-days>0<small> 天</small></strong><p>连续忍住</p></article>
-            <article><span>连冲榜</span><strong data-leaderboard-rush-days>0<small> 天</small></strong><p>连续冲了</p></article>
+          <section class="leaderboard-local-scores" aria-label="我的历史最长连续天数">
+            <article><span>忍者榜</span><strong data-leaderboard-ninja-days>0<small> 天</small></strong><p>历史最长忍住</p></article>
+            <article><span>连冲榜</span><strong data-leaderboard-rush-days>0<small> 天</small></strong><p>历史最长连冲</p></article>
+          </section>
+
+          <section class="leaderboard-board-card">
+            <div class="leaderboard-tabs" role="tablist" aria-label="排行榜分类">
+              <button type="button" role="tab" data-tab="ninja" aria-selected="true">忍者榜</button>
+              <button type="button" role="tab" data-tab="rush" aria-selected="false">连冲榜</button>
+              <button class="leaderboard-refresh" type="button" aria-label="刷新排行榜">↻</button>
+            </div>
+            <div class="leaderboard-board-summary">
+              <div><span data-leaderboard-board-label>历史最长忍住天数</span><strong data-leaderboard-current-days>0<small> 天</small></strong></div>
+              <div><span>我的排名</span><strong data-leaderboard-my-rank>未公开</strong></div>
+            </div>
+            <p class="leaderboard-rank-insight" data-leaderboard-rank-insight>公开参与后显示名次变化</p>
+            <div class="leaderboard-list" aria-live="polite"></div>
+            <footer>TOP 100 · 数据来自用户本机历史记录汇总，采用荣誉制</footer>
           </section>
 
           <section class="leaderboard-milestones" aria-labelledby="leaderboard-milestone-title">
@@ -259,7 +274,7 @@ import {
               <em>3—16 位，支持中文、字母、数字、_ 和 -；修改权绑定当前浏览器</em>
             </label>
             <div class="leaderboard-visibility-choice" role="group" aria-label="数据公开设置">
-              <button type="button" data-visibility="public"><span>${trophyIcon}</span><b>公开参与</b><small>展示 ID 与连续天数</small></button>
+              <button type="button" data-visibility="public"><span>${trophyIcon}</span><b>公开参与</b><small>展示 ID 与历史最长天数</small></button>
               <button type="button" data-visibility="private"><span>${shieldIcon}</span><b>不公开</b><small>ID 与记录仅留本机</small></button>
             </div>
             <p class="leaderboard-profile-status" role="status" aria-live="polite"></p>
@@ -288,20 +303,6 @@ import {
             </section>
           </section>
 
-          <section class="leaderboard-board-card">
-            <div class="leaderboard-tabs" role="tablist" aria-label="排行榜分类">
-              <button type="button" role="tab" data-tab="ninja" aria-selected="true">忍者榜</button>
-              <button type="button" role="tab" data-tab="rush" aria-selected="false">连冲榜</button>
-              <button class="leaderboard-refresh" type="button" aria-label="刷新排行榜">↻</button>
-            </div>
-            <div class="leaderboard-board-summary">
-              <div><span data-leaderboard-board-label>连续忍住天数</span><strong data-leaderboard-current-days>0<small> 天</small></strong></div>
-              <div><span>我的排名</span><strong data-leaderboard-my-rank>未公开</strong></div>
-            </div>
-            <p class="leaderboard-rank-insight" data-leaderboard-rank-insight>公开参与后显示名次变化</p>
-            <div class="leaderboard-list" aria-live="polite"></div>
-            <footer>TOP 100 · 数据来自用户打卡汇总，采用荣誉制</footer>
-          </section>
         </div>
       </section>`;
 
@@ -356,7 +357,9 @@ import {
     overlay.hidden = false;
     requestAnimationFrame(() => overlay.classList.add("is-open"));
     render();
-    void loadBoards();
+    void (state.profile.isPublic && state.profile.publicId
+      ? publishProfile({ quiet: true })
+      : loadBoards());
     navigator.vibrate?.(8);
   }
 
@@ -546,7 +549,7 @@ import {
     if (inlineRush) inlineRush.textContent = String(current.rushDays);
     inlineEntry?.setAttribute(
       "aria-label",
-      `打开自律排行榜，当前连续忍住 ${current.ninjaDays} 天，连续冲了 ${current.rushDays} 天`,
+      `打开自律排行榜，历史最长忍住 ${current.ninjaDays} 天，历史最长连冲 ${current.rushDays} 天`,
     );
   }
 
@@ -635,7 +638,7 @@ import {
     const rank = overlay.querySelector("[data-leaderboard-my-rank]");
     const insight = overlay.querySelector("[data-leaderboard-rank-insight]");
     const list = overlay.querySelector(".leaderboard-list");
-    if (label) label.textContent = state.tab === "ninja" ? "连续忍住天数" : "连续冲的天数";
+    if (label) label.textContent = state.tab === "ninja" ? "历史最长忍住天数" : "历史最长连冲天数";
     if (currentValue) currentValue.innerHTML = `${state.tab === "ninja" ? current.ninjaDays : current.rushDays}<small> 天</small>`;
     if (rank) rank.textContent = state.profile.isPublic ? (own ? `#${own.rank}` : "等待上榜") : "未公开";
     if (insight) {
@@ -643,7 +646,7 @@ import {
         insight.textContent = "公开参与后显示名次变化";
         insight.dataset.tone = "muted";
       } else if (!own) {
-        insight.textContent = "完成连续记录后即可进入本榜";
+        insight.textContent = "产生历史连续记录后即可进入本榜";
         insight.dataset.tone = "muted";
       } else {
         const previous = state.rankPrevious[state.tab];
