@@ -6,6 +6,7 @@ const dom = new JSDOM(`<!doctype html><html><body>
     <header class="topbar"><div class="menu-wrap"></div></header>
     <section class="hero"></section>
     <section class="stats"></section>
+    <footer><span class="lock">⌁</span>记录只保存在当前设备</footer>
   </main></div>
 </body></html>`, {
   url: "https://sechs6666code.github.io/chonglema/",
@@ -22,6 +23,9 @@ Object.defineProperties(globalThis, {
   requestAnimationFrame: { value: window.requestAnimationFrame.bind(window), configurable: true },
 });
 window.navigator.vibrate = () => true;
+window.QRCode = {
+  toCanvas: async (canvas, value) => { canvas.dataset.recoveryCode = value; },
+};
 let copiedRecoveryCode = "";
 Object.defineProperty(window.navigator, "clipboard", {
   value: { writeText: async (value) => { copiedRecoveryCode = value; } },
@@ -76,6 +80,8 @@ assert.match(inlineEntry.getAttribute("aria-label"), /历史最长连冲 2 天/)
 assert.match(inlineEntry.textContent, /双榜排行/);
 assert.match(inlineEntry.textContent, /忍住/);
 assert.match(inlineEntry.textContent, /连冲/);
+assert.match(window.document.querySelector(".shell > footer").textContent, /完整记录默认留在本机/);
+assert.match(window.document.querySelector(".shell > footer").textContent, /仅同步 ID 与历史最长天数/);
 
 inlineEntry.remove();
 await new Promise((resolve) => window.setTimeout(resolve, 25));
@@ -121,6 +127,12 @@ assert.equal(overlay.querySelectorAll(".leaderboard-badge").length, 10, "both st
 overlay.querySelector("[data-recovery-copy]").click();
 await new Promise((resolve) => window.setTimeout(resolve, 10));
 assert.match(copiedRecoveryCode, /^CLM1\./, "the recovery action should copy a portable recovery code");
+overlay.querySelector("[data-recovery-qr]").click();
+await new Promise((resolve) => window.setTimeout(resolve, 10));
+assert.equal(overlay.querySelector("[data-recovery-qr-box]").hidden, false);
+assert.match(overlay.querySelector("[data-recovery-qr-box] canvas").dataset.recoveryCode, /^CLM1\./);
+assert.ok(overlay.querySelector("[data-recovery-download]"));
+assert.ok(overlay.querySelector("[data-recovery-file]"));
 overlay.querySelector("[data-recovery-open]").click();
 const recoveryInput = overlay.querySelector("#leaderboard-recovery-code");
 recoveryInput.value = copiedRecoveryCode;
@@ -142,7 +154,7 @@ overlay.querySelector('[data-visibility="private"]').click();
 overlay.querySelector(".leaderboard-save").click();
 await new Promise((resolve) => window.setTimeout(resolve, 80));
 assert.equal(removed, true, "switching to private should delete the shared profile");
-assert.match(overlay.textContent, /只保存在本机/);
+assert.match(overlay.textContent, /默认留在本机/);
 
 overlay.querySelector(".leaderboard-close").click();
 assert.equal(window.document.activeElement, inlineEntry, "closing the dialog should restore focus to its opener");
