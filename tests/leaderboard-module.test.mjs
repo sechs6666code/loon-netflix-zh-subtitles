@@ -30,6 +30,8 @@ Object.defineProperty(window.navigator, "clipboard", {
 window.localStorage.setItem("did-you-v1", JSON.stringify({
   "2026-07-15": "no",
   "2026-07-14": "no",
+  "2026-07-13": "yes",
+  "2026-07-12": "yes",
 }));
 window.CHONGLEMA_LEADERBOARD_API = "https://leaderboard.example.test";
 
@@ -49,10 +51,13 @@ const mockFetch = async (url, options = {}) => {
     removed = true;
     return Response.json({ deleted: true });
   }
-  const entry = published
+  const ninja = published
     ? [{ publicId: savedPayload.publicId, days: savedPayload.ninjaDays, rank: 1, updatedAt: new Date().toISOString() }]
     : [];
-  return Response.json({ ninja: entry, rush: [], generatedAt: new Date().toISOString() });
+  const rush = published
+    ? [{ publicId: savedPayload.publicId, days: savedPayload.rushDays, rank: 1, updatedAt: new Date().toISOString() }]
+    : [];
+  return Response.json({ ninja, rush, generatedAt: new Date().toISOString() });
 };
 Object.defineProperty(globalThis, "fetch", { value: mockFetch, configurable: true });
 window.fetch = mockFetch;
@@ -66,7 +71,8 @@ const inlineEntry = window.document.querySelector(".leaderboard-inline-entry");
 const stats = window.document.querySelector(".stats");
 assert.ok(inlineEntry, "a prominent leaderboard entry should mount in the main flow");
 assert.equal(inlineEntry.nextElementSibling, stats, "the main entry should sit directly above the stats");
-assert.match(inlineEntry.getAttribute("aria-label"), /连续忍住 2 天/);
+assert.match(inlineEntry.getAttribute("aria-label"), /历史最长忍住 2 天/);
+assert.match(inlineEntry.getAttribute("aria-label"), /历史最长连冲 2 天/);
 assert.match(inlineEntry.textContent, /双榜排行/);
 assert.match(inlineEntry.textContent, /忍住/);
 assert.match(inlineEntry.textContent, /连冲/);
@@ -80,6 +86,16 @@ await new Promise((resolve) => window.setTimeout(resolve, 25));
 
 const overlay = window.document.querySelector("#leaderboard-dialog");
 assert.equal(overlay.hidden, false, "clicking the trigger should open the leaderboard dialog");
+assert.equal(
+  overlay.querySelector(".leaderboard-local-scores").nextElementSibling,
+  overlay.querySelector(".leaderboard-board-card"),
+  "the leaderboard should appear immediately above milestones",
+);
+assert.equal(
+  overlay.querySelector(".leaderboard-board-card").nextElementSibling,
+  overlay.querySelector(".leaderboard-milestones"),
+  "milestones should follow the leaderboard",
+);
 const input = overlay.querySelector(".leaderboard-id-field input");
 input.value = "忍者007";
 input.dispatchEvent(new window.Event("input", { bubbles: true }));
@@ -90,10 +106,16 @@ await new Promise((resolve) => window.setTimeout(resolve, 80));
 assert.ok(savedPayload, "saving a public profile should call the shared API");
 assert.equal(savedPayload.publicId, "忍者007");
 assert.equal(savedPayload.isPublic, true);
+assert.equal(savedPayload.ninjaDays, 2);
+assert.equal(savedPayload.rushDays, 2, "historical longest streaks should let one profile join both boards");
 assert.equal(typeof savedPayload.ownerToken, "string");
 assert.ok(savedPayload.ownerToken.length >= 24);
 assert.match(overlay.textContent, /#1/);
 assert.match(overlay.textContent, /忍者007/);
+overlay.querySelector('[data-tab="rush"]').click();
+assert.match(overlay.querySelector("[data-leaderboard-board-label]").textContent, /历史最长连冲/);
+assert.match(overlay.querySelector("[data-leaderboard-my-rank]").textContent, /#1/);
+overlay.querySelector('[data-tab="ninja"]').click();
 assert.equal(overlay.querySelectorAll(".leaderboard-badge").length, 10, "both streak types should render five milestone badges");
 
 overlay.querySelector("[data-recovery-copy]").click();
