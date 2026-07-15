@@ -1190,6 +1190,276 @@
   font-size: 8px;
 }
 
+/* Mobile readability and accessible touch targets. */
+.leaderboard-trigger {
+  min-height: 44px;
+  height: 44px;
+  font-size: 13px;
+}
+
+.leaderboard-trigger > b {
+  font-size: 10px;
+}
+
+.leaderboard-inline-copy > small,
+.leaderboard-inline-scores small {
+  font-size: 10px;
+}
+
+.leaderboard-inline-copy > em {
+  font-size: 11px;
+}
+
+.leaderboard-header small,
+.leaderboard-section-title small {
+  font-size: 10px;
+}
+
+.leaderboard-close {
+  width: 44px;
+  height: 44px;
+}
+
+.leaderboard-privacy b {
+  font-size: 13px;
+}
+
+.leaderboard-privacy p {
+  font-size: 11px;
+}
+
+.leaderboard-local-scores span {
+  font-size: 12px;
+}
+
+.leaderboard-local-scores strong small,
+.leaderboard-local-scores p {
+  font-size: 11px;
+}
+
+.leaderboard-section-title h3 {
+  font-size: 17px;
+}
+
+.leaderboard-milestones [data-leaderboard-badge-count],
+[data-leaderboard-visibility] {
+  font-size: 10px;
+}
+
+.leaderboard-milestone-track > header span,
+.leaderboard-milestone-track > header em {
+  font-size: 10px;
+}
+
+.leaderboard-badge b {
+  font-size: 10px;
+}
+
+.leaderboard-badge small,
+.leaderboard-milestone-track > p {
+  font-size: 8px;
+}
+
+.leaderboard-id-field > span {
+  font-size: 12px;
+}
+
+.leaderboard-id-field input {
+  min-height: 46px;
+  font-size: 14px;
+}
+
+.leaderboard-id-field > div small,
+.leaderboard-id-field em {
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.leaderboard-visibility-choice button {
+  min-height: 58px;
+}
+
+.leaderboard-visibility-choice button b {
+  font-size: 12px;
+}
+
+.leaderboard-visibility-choice button small {
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.leaderboard-profile-status {
+  font-size: 11px;
+}
+
+.leaderboard-save {
+  min-height: 48px;
+  font-size: 13px;
+}
+
+.leaderboard-recovery > div:first-child b {
+  font-size: 12px;
+}
+
+.leaderboard-recovery > div:first-child p {
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.leaderboard-recovery-actions button,
+.leaderboard-recovery-actions label,
+.leaderboard-recovery-form-actions button,
+.leaderboard-recovery-candidate button,
+.leaderboard-recovery-code-open,
+.leaderboard-recovery-qr button {
+  min-height: 44px;
+  font-size: 11px;
+}
+
+.leaderboard-recovery-file {
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--solid) 58%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-weight: 630;
+  text-align: center;
+}
+
+.leaderboard-recovery-file input {
+  display: none;
+}
+
+.leaderboard-recovery-code-open {
+  width: 100%;
+  margin-top: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.leaderboard-recovery-qr {
+  margin-top: 10px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--green) 20%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--green) 5%, var(--solid));
+  text-align: center;
+}
+
+.leaderboard-recovery-qr[hidden] {
+  display: none;
+}
+
+.leaderboard-recovery-qr canvas {
+  width: min(220px, 100%);
+  height: auto;
+  border: 8px solid #fff;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.leaderboard-recovery-qr p {
+  max-width: 360px;
+  margin: 9px auto 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.leaderboard-recovery-qr button {
+  width: 100%;
+  margin-top: 9px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--solid) 65%, transparent);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.leaderboard-recovery-form > label,
+.leaderboard-recovery-warning,
+.leaderboard-recovery-status,
+.leaderboard-recovery-candidate span,
+.leaderboard-recovery-candidate dt {
+  font-size: 10px;
+}
+
+.leaderboard-recovery-form textarea {
+  font-size: 10px;
+}
+
+.leaderboard-recovery-candidate strong,
+.leaderboard-recovery-candidate dd {
+  font-size: 12px;
+}
+
+.leaderboard-tabs [data-tab] {
+  min-height: 44px;
+  padding-inline: 18px;
+  font-size: 12px;
+}
+
+.leaderboard-refresh {
+  width: 44px;
+  height: 44px;
+}
+
+.leaderboard-board-summary span,
+.leaderboard-board-summary strong small {
+  font-size: 10px;
+}
+
+.leaderboard-rank-insight {
+  min-height: 36px;
+  font-size: 11px;
+}
+
+.leaderboard-podium-card > b,
+.leaderboard-rank-number,
+.leaderboard-avatar {
+  font-size: 11px;
+}
+
+.leaderboard-podium-card > strong small,
+.leaderboard-row > strong small,
+.leaderboard-row > b em {
+  font-size: 9px;
+}
+
+.leaderboard-row {
+  min-height: 44px;
+}
+
+.leaderboard-row > b,
+.leaderboard-row > strong {
+  font-size: 12px;
+}
+
+.leaderboard-empty > p,
+.leaderboard-board-card > footer {
+  font-size: 10px;
+}
+
+.leaderboard-empty > button {
+  min-height: 44px;
+  font-size: 11px;
+}
+
+.leaderboard-close:focus-visible,
+.leaderboard-tabs button:focus-visible,
+.leaderboard-recovery button:focus-visible,
+.leaderboard-recovery-file:focus-within,
+.leaderboard-refresh:focus-visible,
+.leaderboard-save:focus-visible,
+.leaderboard-visibility-choice button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--green) 30%, transparent);
+  outline-offset: 2px;
+}
+
 @media (width <= 680px) {
   .topbar {
     gap: 7px;
@@ -1197,7 +1467,7 @@
 
   .leaderboard-trigger {
     min-width: 101px;
-    height: 37px;
+    height: 44px;
     padding-inline: 10px;
   }
 
@@ -1287,7 +1557,7 @@
   .leaderboard-trigger {
     min-width: 92px;
     gap: 5px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .leaderboard-trigger > b {

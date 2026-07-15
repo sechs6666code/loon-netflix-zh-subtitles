@@ -162,7 +162,7 @@ import {
     }).then(async (responsePayload) => {
       if (!quiet) {
         setStatus(
-          isRemoving ? "已退出排行榜，ID 与记录只保存在本机" : "已公开参与排行榜",
+          isRemoving ? "已退出排行榜，ID 与完整记录默认留在本机" : "已公开参与排行榜",
           "success",
         );
       }
@@ -275,7 +275,7 @@ import {
             </label>
             <div class="leaderboard-visibility-choice" role="group" aria-label="数据公开设置">
               <button type="button" data-visibility="public"><span>${trophyIcon}</span><b>公开参与</b><small>展示 ID 与历史最长天数</small></button>
-              <button type="button" data-visibility="private"><span>${shieldIcon}</span><b>不公开</b><small>ID 与记录仅留本机</small></button>
+              <button type="button" data-visibility="private"><span>${shieldIcon}</span><b>不公开</b><small>ID 与完整记录默认留本机</small></button>
             </div>
             <p class="leaderboard-profile-status" role="status" aria-live="polite"></p>
             <button class="leaderboard-save" type="button">保存榜单设置</button>
@@ -286,8 +286,16 @@ import {
                 <p>恢复自定义 ID、修改权和本地打卡记录。</p>
               </div>
               <div class="leaderboard-recovery-actions">
-                <button type="button" data-recovery-copy>复制恢复码</button>
-                <button type="button" data-recovery-open>导入恢复码</button>
+                <button type="button" data-recovery-copy>复制完整恢复码</button>
+                <button type="button" data-recovery-qr>显示身份二维码</button>
+                <button type="button" data-recovery-download>下载完整备份</button>
+                <label class="leaderboard-recovery-file">导入备份文件<input type="file" accept=".json,.clm,application/json" data-recovery-file></label>
+              </div>
+              <button class="leaderboard-recovery-code-open" type="button" data-recovery-open>或粘贴恢复码</button>
+              <div class="leaderboard-recovery-qr" data-recovery-qr-box hidden>
+                <canvas width="220" height="220" aria-label="榜单身份恢复二维码"></canvas>
+                <p>二维码仅恢复榜单身份；完整打卡记录请下载备份文件。二维码在本机生成，不会发送给第三方。</p>
+                <button type="button" data-recovery-qr-close>收起二维码</button>
               </div>
               <div class="leaderboard-recovery-form" hidden>
                 <label for="leaderboard-recovery-code">粘贴恢复码</label>
@@ -329,6 +337,10 @@ import {
 
     element.querySelector(".leaderboard-save")?.addEventListener("click", saveDraftProfile);
     element.querySelector("[data-recovery-copy]")?.addEventListener("click", copyRecoveryCode);
+    element.querySelector("[data-recovery-qr]")?.addEventListener("click", showRecoveryQr);
+    element.querySelector("[data-recovery-download]")?.addEventListener("click", downloadRecoveryFile);
+    element.querySelector("[data-recovery-file]")?.addEventListener("change", importRecoveryFile);
+    element.querySelector("[data-recovery-qr-close]")?.addEventListener("click", closeRecoveryQr);
     element.querySelector("[data-recovery-open]")?.addEventListener("click", openRecoveryForm);
     element.querySelector("[data-recovery-cancel]")?.addEventListener("click", closeRecoveryForm);
     element.querySelector("[data-recovery-verify]")?.addEventListener("click", verifyRecoveryCode);
@@ -409,6 +421,98 @@ import {
     }
   }
 
+  function validRecoveryProfile() {
+    const validation = validatePublicId(state.profile.publicId);
+    if (validation.valid) return true;
+    setStatus("请先创建并保存自定义 ID，再备份身份", "warning");
+    overlay?.querySelector(".leaderboard-id-field input")?.focus();
+    return false;
+  }
+
+  async function showRecoveryQr() {
+    if (!validRecoveryProfile()) return;
+    const box = overlay?.querySelector("[data-recovery-qr-box]");
+    const canvas = box?.querySelector("canvas");
+    if (!box || !canvas) return;
+    if (!window.QRCode?.toCanvas) {
+      setStatus("二维码组件加载失败，请改用复制恢复码或下载备份", "error");
+      return;
+    }
+    try {
+      const identityCode = createRecoveryCode(state.profile, {});
+      await window.QRCode.toCanvas(canvas, identityCode, {
+        width: 220,
+        margin: 2,
+        errorCorrectionLevel: "M",
+        color: { dark: "#17211d", light: "#ffffff" },
+      });
+      box.hidden = false;
+      setStatus("身份二维码已在本机生成", "success");
+      box.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    } catch {
+      setStatus("二维码生成失败，请改用完整备份文件", "error");
+    }
+  }
+
+  function closeRecoveryQr() {
+    const box = overlay?.querySelector("[data-recovery-qr-box]");
+    if (box) box.hidden = true;
+  }
+
+  function downloadRecoveryFile() {
+    if (!validRecoveryProfile()) return;
+    try {
+      const backup = {
+        format: "chonglema-backup",
+        version: 1,
+        createdAt: new Date().toISOString(),
+        recoveryCode: createRecoveryCode(state.profile, readRecords()),
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const href = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = `chonglema-backup-${localDateKey()}.clm.json`;
+      link.click();
+      window.setTimeout(() => window.URL.revokeObjectURL(href), 0);
+      setStatus("完整备份文件已生成，请妥善保存", "success");
+      navigator.vibrate?.(10);
+    } catch {
+      setStatus("备份文件生成失败，请改用复制恢复码", "error");
+    }
+  }
+
+  async function importRecoveryFile(event) {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      let recoveryCode = text.trim();
+      try {
+        const backup = JSON.parse(text);
+        recoveryCode = String(backup?.recoveryCode || "").trim();
+      } catch {
+        // Plain-text recovery codes remain importable for backwards compatibility.
+      }
+      if (!recoveryCode) throw new Error("备份文件中没有恢复码");
+      openRecoveryForm();
+      const input = overlay?.querySelector("#leaderboard-recovery-code");
+      if (input) input.value = recoveryCode;
+      verifyRecoveryCode();
+      if (!state.recoveryCandidate?.valid) throw new Error(state.recoveryMessage || "备份文件无效");
+      setStatus("备份文件验证通过，请核对后确认恢复", "success");
+    } catch (error) {
+      state.recoveryMessage = error instanceof Error ? error.message : "备份文件无法读取";
+      state.recoveryTone = "error";
+      state.recoveryCandidate = null;
+      state.recoveryOpen = true;
+      renderRecovery();
+      setStatus("备份文件无效，未覆盖本机数据", "error");
+    } finally {
+      event.currentTarget.value = "";
+    }
+  }
+
   function openRecoveryForm() {
     state.recoveryOpen = true;
     state.recoveryCandidate = null;
@@ -486,7 +590,7 @@ import {
       setStatus(
         state.profile.isPublic
           ? "身份已保存在本机；连接排行榜服务后即可同步全站排名"
-          : "已设为不公开，ID 与记录只保存在本机",
+          : "已设为不公开，ID 与完整记录默认留在本机",
         state.profile.isPublic ? "warning" : "success",
       );
       renderProfile();
@@ -729,6 +833,15 @@ import {
     }
     renderScores();
     renderVisibility();
+    updateMainPrivacyCopy();
+  }
+
+  function updateMainPrivacyCopy() {
+    const footer = document.querySelector(".shell > footer");
+    const copy = "完整记录默认留在本机 · 公开榜仅同步 ID 与历史最长天数";
+    if (!footer || (footer.dataset.privacyCopy === "minimal-sync-v1" && footer.textContent?.includes(copy))) return;
+    footer.innerHTML = `<span class="lock">⌁</span>${copy}`;
+    footer.dataset.privacyCopy = "minimal-sync-v1";
   }
 
   document.addEventListener("click", (event) => {
@@ -756,6 +869,7 @@ import {
     const stats = document.querySelector(".stats");
     const inlineEntryNeedsMount = stats
       && (!inlineEntry?.isConnected || inlineEntry.nextElementSibling !== stats);
+    updateMainPrivacyCopy();
     if (!trigger?.isConnected || inlineEntryNeedsMount) ensureMounted();
   });
   mountObserver.observe(root, { childList: true, subtree: true });

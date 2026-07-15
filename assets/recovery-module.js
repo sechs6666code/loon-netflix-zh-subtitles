@@ -311,45 +311,47 @@
   }
 
   function animatePercentage(to) {
-    const number = moduleElement?.querySelector(".recovery-percent-number");
-    if (!number) return;
+    const numbers = [...(moduleElement?.querySelectorAll(".recovery-percent-number") || [])];
+    if (!numbers.length) return;
+    const setNumber = (value) => numbers.forEach((number) => { number.textContent = value; });
+    const toggleCounting = (counting) => numbers.forEach((number) => number.classList.toggle("is-counting", counting));
 
     if (to == null) {
-      number.textContent = "--";
-      number.classList.remove("is-counting");
+      setNumber("--");
+      toggleCounting(false);
       currentProgress = null;
       return;
     }
 
     const target = Math.round(to);
     if (reducedMotion.matches) {
-      number.textContent = String(target);
-      number.classList.remove("is-counting");
+      setNumber(String(target));
+      toggleCounting(false);
       currentProgress = target;
       return;
     }
 
     const from = currentProgress == null ? 0 : currentProgress;
     if (currentProgress == null) {
-      number.textContent = "0";
+      setNumber("0");
       currentProgress = 0;
     }
     if (from === target) {
-      number.classList.remove("is-counting");
+      toggleCounting(false);
       return;
     }
-    number.classList.add("is-counting");
+    toggleCounting(true);
     const started = performance.now();
     const duration = 620;
 
     const tick = (now) => {
       const ratio = clamp((now - started) / duration, 0, 1);
       const eased = 1 - Math.pow(1 - ratio, 3);
-      number.textContent = String(Math.round(from + (target - from) * eased));
+      setNumber(String(Math.round(from + (target - from) * eased)));
       if (ratio < 1) requestAnimationFrame(tick);
       else {
         currentProgress = target;
-        number.classList.remove("is-counting");
+        toggleCounting(false);
       }
     };
 
@@ -899,6 +901,7 @@
             <h2>蛋蛋恢复仓</h2>
             <p>把看不见的恢复，变成看得见的进度</p>
           </div>
+          <span class="recovery-compact-percent"><small>恢复趋势</small><strong><span class="recovery-percent-number">--</span><em>%</em></strong></span>
           <span class="recovery-expand-label">展开</span>
         </div>
 
