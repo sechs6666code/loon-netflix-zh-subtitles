@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 
 const dom = new JSDOM(`<!doctype html><html><body>
-  <div id="root"><main class="shell"><header class="topbar"><div class="menu-wrap"></div></header></main></div>
+  <div id="root"><main class="shell">
+    <header class="topbar"><div class="menu-wrap"></div></header>
+    <section class="hero"></section>
+    <section class="stats"></section>
+  </main></div>
 </body></html>`, {
   url: "https://sechs6666code.github.io/chonglema/",
   pretendToBeVisual: true,
@@ -53,7 +57,20 @@ await new Promise((resolve) => window.setTimeout(resolve, 25));
 
 const trigger = window.document.querySelector(".leaderboard-trigger");
 assert.ok(trigger, "the leaderboard trigger should mount in the top bar");
-trigger.click();
+const inlineEntry = window.document.querySelector(".leaderboard-inline-entry");
+const stats = window.document.querySelector(".stats");
+assert.ok(inlineEntry, "a prominent leaderboard entry should mount in the main flow");
+assert.equal(inlineEntry.nextElementSibling, stats, "the main entry should sit directly above the stats");
+assert.match(inlineEntry.getAttribute("aria-label"), /连续忍住 2 天/);
+assert.match(inlineEntry.textContent, /双榜排行/);
+assert.match(inlineEntry.textContent, /忍住/);
+assert.match(inlineEntry.textContent, /连冲/);
+
+inlineEntry.remove();
+await new Promise((resolve) => window.setTimeout(resolve, 25));
+assert.equal(inlineEntry.nextElementSibling, stats, "the main entry should remount after a React-style rerender");
+
+inlineEntry.click();
 await new Promise((resolve) => window.setTimeout(resolve, 25));
 
 const overlay = window.document.querySelector("#leaderboard-dialog");
@@ -78,6 +95,9 @@ overlay.querySelector(".leaderboard-save").click();
 await new Promise((resolve) => window.setTimeout(resolve, 80));
 assert.equal(removed, true, "switching to private should delete the shared profile");
 assert.match(overlay.textContent, /只保存在本机/);
+
+overlay.querySelector(".leaderboard-close").click();
+assert.equal(window.document.activeElement, inlineEntry, "closing the dialog should restore focus to its opener");
 
 dom.window.close();
 console.log("leaderboard module interaction tests passed");
