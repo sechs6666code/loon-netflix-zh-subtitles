@@ -613,8 +613,8 @@
     moduleElement.style.setProperty("--recovery-motion-y", `${motionCurrent.y.toFixed(2)}px`);
     moduleElement.style.setProperty("--recovery-liquid-x", `${(motionCurrent.x * .34).toFixed(2)}px`);
     moduleElement.style.setProperty("--recovery-liquid-y", `${(motionCurrent.y * .12 - motionCurrent.surge * 1.8).toFixed(2)}px`);
-    moduleElement.style.setProperty("--recovery-glow-x", `${(motionCurrent.x * .28).toFixed(2)}px`);
-    moduleElement.style.setProperty("--recovery-glow-y", `${(motionCurrent.y * .28).toFixed(2)}px`);
+    moduleElement.style.setProperty("--recovery-glow-x", `${(motionCurrent.x * .72).toFixed(2)}px`);
+    moduleElement.style.setProperty("--recovery-glow-y", `${(motionCurrent.y * .58).toFixed(2)}px`);
     moduleElement.style.setProperty("--recovery-highlight-x", `${(-motionCurrent.x * .92).toFixed(2)}px`);
     moduleElement.style.setProperty("--recovery-highlight-y", `${(-motionCurrent.y * .74).toFixed(2)}px`);
     moduleElement.style.setProperty("--recovery-edge-x", `${(-motionCurrent.x * .42).toFixed(2)}px`);
