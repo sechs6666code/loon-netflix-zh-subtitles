@@ -1,5 +1,14 @@
 export const RECORDS_KEY = "did-you-v1";
 export const PROFILE_KEY = "chonglema-leaderboard-profile-v1";
+export const RANK_SNAPSHOT_KEY = "chonglema-leaderboard-rank-snapshot-v1";
+
+export const MILESTONES = [
+  { days: 3, ninja: "初次稳住", rush: "连续起步" },
+  { days: 7, ninja: "一周忍者", rush: "七日连冲" },
+  { days: 30, ninja: "月度定力", rush: "月度连冲" },
+  { days: 100, ninja: "百日宗师", rush: "百日纪录" },
+  { days: 365, ninja: "年度传奇", rush: "年度纪录" },
+];
 
 export function localDateKey(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
@@ -72,5 +81,100 @@ export function readProfile(storage = localStorage, cryptoObject = crypto) {
     ownerToken: typeof value?.ownerToken === "string" && value.ownerToken.length >= 24
       ? value.ownerToken
       : createOwnerToken(cryptoObject),
+  };
+}
+
+function recoveryChecksum(value) {
+  let hash = 2166136261;
+  for (const character of value) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36).toUpperCase().padStart(7, "0").slice(-7);
+}
+
+function encodeBase64Url(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
+}
+
+function decodeBase64Url(value) {
+  const base64 = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(base64);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+export function createRecoveryCode(profile, records = {}) {
+  const safeProfile = readProfile({
+    getItem: () => JSON.stringify(profile || {}),
+  });
+  const safeRecords = records && typeof records === "object" && !Array.isArray(records) ? records : {};
+  const payload = encodeBase64Url(JSON.stringify({
+    version: 1,
+    profile: safeProfile,
+    records: safeRecords,
+    createdAt: new Date().toISOString(),
+  }));
+  const checksum = recoveryChecksum(payload);
+  return `CLM1.${payload.match(/.{1,24}/g).join(".")}.${checksum}`;
+}
+
+export function parseRecoveryCode(value) {
+  try {
+    const normalized = String(value || "").trim().replace(/\s+/g, "");
+    const parts = normalized.split(".");
+    if (parts.shift()?.toUpperCase() !== "CLM1" || parts.length < 2) {
+      throw new Error("恢复码格式不正确");
+    }
+    const checksum = parts.pop()?.toUpperCase();
+    const payload = parts.join("");
+    if (!payload || checksum !== recoveryChecksum(payload)) {
+      throw new Error("恢复码校验失败，请检查是否复制完整");
+    }
+    const decoded = JSON.parse(decodeBase64Url(payload));
+    if (decoded?.version !== 1 || !decoded?.profile) throw new Error("暂不支持这个版本的恢复码");
+    const profile = readProfile({ getItem: () => JSON.stringify(decoded.profile) });
+    const validation = validatePublicId(profile.publicId);
+    if (!validation.valid || profile.ownerToken !== decoded.profile.ownerToken) {
+      throw new Error("恢复码中的身份信息无效");
+    }
+    const records = decoded.records && typeof decoded.records === "object" && !Array.isArray(decoded.records)
+      ? decoded.records
+      : {};
+    return {
+      valid: true,
+      profile: { ...profile, publicId: validation.publicId },
+      records,
+      createdAt: typeof decoded.createdAt === "string" ? decoded.createdAt : "",
+      error: "",
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      profile: null,
+      records: {},
+      createdAt: "",
+      error: error instanceof Error ? error.message : "恢复码无效",
+    };
+  }
+}
+
+export function milestoneState(days, type = "ninja") {
+  const normalizedDays = Math.max(0, Math.floor(Number(days) || 0));
+  const earned = MILESTONES.filter((milestone) => normalizedDays >= milestone.days);
+  const next = MILESTONES.find((milestone) => normalizedDays < milestone.days) || null;
+  const previousDays = earned.at(-1)?.days || 0;
+  const progress = next
+    ? Math.max(0, Math.min(100, ((normalizedDays - previousDays) / (next.days - previousDays)) * 100))
+    : 100;
+  return {
+    days: normalizedDays,
+    earned,
+    next,
+    progress,
+    currentLabel: earned.at(-1)?.[type] || "尚未解锁",
   };
 }
