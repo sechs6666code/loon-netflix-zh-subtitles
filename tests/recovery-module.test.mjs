@@ -36,6 +36,9 @@ await new Promise((resolve) => window.setTimeout(resolve, 40));
 const module = window.document.querySelector("#recovery-vault");
 assert.ok(module, "recovery module should mount after the monthly summary");
 assert.equal(module.previousElementSibling.className, "month-summary");
+assert.ok(module.querySelector(".recovery-compact-percent"), "collapsed recovery should expose a compact percentage");
+assert.ok(!module.classList.contains("is-expanded"), "recovery should be collapsed by default");
+assert.match(cssSource, /not\(\.is-expanded\)[\s\S]*\.recovery-visual[\s\S]*display:\s*none/, "collapsed recovery should hide the full vessel");
 assert.ok(module.querySelector(".recovery-liquid-caustics"), "liquid refraction layer should render");
 assert.ok(module.querySelector(".recovery-glass-glint"), "glass highlight layer should render");
 assert.ok(module.querySelector(".recovery-edge-refraction"), "glass edge refraction should render");
@@ -55,6 +58,7 @@ assert.ok(module.querySelector("details.recovery-disclaimer"), "trend disclaimer
 
 const progress = Number(module.querySelector(".recovery-percent-number").textContent);
 assert.ok(progress >= 60 && progress <= 76, `56-hour progress should be in the expected non-linear range, got ${progress}`);
+assert.equal(new Set([...module.querySelectorAll(".recovery-percent-number")].map((node) => node.textContent)).size, 1);
 assert.match(module.querySelector(".recovery-status-pill").textContent, /明显恢复|接近平时水平/);
 assert.ok(module.querySelectorAll(".recovery-particle").length >= 3, "progress should render layered particles");
 assert.ok(
