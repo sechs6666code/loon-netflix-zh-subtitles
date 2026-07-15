@@ -1,7 +1,13 @@
 import {
+  MILESTONES,
   PROFILE_KEY,
+  RANK_SNAPSHOT_KEY,
   RECORDS_KEY,
   calculateStreaks,
+  createRecoveryCode,
+  localDateKey,
+  milestoneState,
+  parseRecoveryCode,
   readProfile,
   readRecords,
   validatePublicId,
@@ -22,6 +28,11 @@ import {
     saving: false,
     error: "",
     open: false,
+    rankPrevious: { ninja: null, rush: null },
+    recoveryOpen: false,
+    recoveryCandidate: null,
+    recoveryMessage: "",
+    recoveryTone: "",
   };
   state.draftId = state.profile.publicId;
   state.draftPublic = state.profile.isPublic;
@@ -57,6 +68,40 @@ import {
 
   const scores = () => calculateStreaks(readRecords());
 
+  function currentRanks() {
+    const findRank = (entries) => {
+      if (!state.profile.isPublic || !state.profile.publicId) return null;
+      const own = entries.find((entry) => profileKey(entry.publicId) === profileKey(state.profile.publicId));
+      return own ? Number(own.rank) || null : null;
+    };
+    return {
+      ninja: findRank(state.boards.ninja),
+      rush: findRank(state.boards.rush),
+    };
+  }
+
+  function updateRankSnapshot() {
+    const current = currentRanks();
+    const today = localDateKey();
+    const identity = profileKey(state.profile.publicId);
+    let stored = null;
+    try {
+      stored = JSON.parse(localStorage.getItem(RANK_SNAPSHOT_KEY) || "null");
+    } catch {
+      stored = null;
+    }
+    if (!stored || stored.identity !== identity) stored = null;
+    const previous = stored?.date === today
+      ? (stored.previous || { ninja: null, rush: null })
+      : (stored?.current || { ninja: null, rush: null });
+    state.rankPrevious = previous;
+    try {
+      localStorage.setItem(RANK_SNAPSHOT_KEY, JSON.stringify({ identity, date: today, previous, current }));
+    } catch {
+      // Ranking still works when storage is unavailable; only the movement hint is omitted.
+    }
+  }
+
   function saveProfileLocally() {
     try {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile));
@@ -91,6 +136,7 @@ import {
         ninja: Array.isArray(payload.ninja) ? payload.ninja : [],
         rush: Array.isArray(payload.rush) ? payload.rush : [],
       };
+      updateRankSnapshot();
     } catch (error) {
       state.error = error instanceof Error ? error.message : "排行榜加载失败";
     } finally {
@@ -194,6 +240,14 @@ import {
             <article><span>连冲榜</span><strong data-leaderboard-rush-days>0<small> 天</small></strong><p>连续冲了</p></article>
           </section>
 
+          <section class="leaderboard-milestones" aria-labelledby="leaderboard-milestone-title">
+            <div class="leaderboard-section-title">
+              <div><small>MILESTONES</small><h3 id="leaderboard-milestone-title">里程碑徽章</h3></div>
+              <span data-leaderboard-badge-count>0/10 已解锁</span>
+            </div>
+            <div class="leaderboard-milestone-list"></div>
+          </section>
+
           <section class="leaderboard-profile-card">
             <div class="leaderboard-section-title">
               <div><small>MY PROFILE</small><h3>我的榜单身份</h3></div>
@@ -210,6 +264,28 @@ import {
             </div>
             <p class="leaderboard-profile-status" role="status" aria-live="polite"></p>
             <button class="leaderboard-save" type="button">保存榜单设置</button>
+
+            <section class="leaderboard-recovery" aria-labelledby="leaderboard-recovery-title">
+              <div>
+                <b id="leaderboard-recovery-title">身份备份与恢复</b>
+                <p>恢复自定义 ID、修改权和本地打卡记录。</p>
+              </div>
+              <div class="leaderboard-recovery-actions">
+                <button type="button" data-recovery-copy>复制恢复码</button>
+                <button type="button" data-recovery-open>导入恢复码</button>
+              </div>
+              <div class="leaderboard-recovery-form" hidden>
+                <label for="leaderboard-recovery-code">粘贴恢复码</label>
+                <textarea id="leaderboard-recovery-code" rows="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="CLM1.…"></textarea>
+                <p class="leaderboard-recovery-warning">恢复码包含身份密钥和打卡记录，请勿发送给他人。</p>
+                <p class="leaderboard-recovery-status" role="status" aria-live="polite"></p>
+                <div class="leaderboard-recovery-candidate" hidden></div>
+                <div class="leaderboard-recovery-form-actions">
+                  <button type="button" data-recovery-cancel>取消</button>
+                  <button type="button" data-recovery-verify>验证恢复码</button>
+                </div>
+              </div>
+            </section>
           </section>
 
           <section class="leaderboard-board-card">
@@ -222,6 +298,7 @@ import {
               <div><span data-leaderboard-board-label>连续忍住天数</span><strong data-leaderboard-current-days>0<small> 天</small></strong></div>
               <div><span>我的排名</span><strong data-leaderboard-my-rank>未公开</strong></div>
             </div>
+            <p class="leaderboard-rank-insight" data-leaderboard-rank-insight>公开参与后显示名次变化</p>
             <div class="leaderboard-list" aria-live="polite"></div>
             <footer>TOP 100 · 数据来自用户打卡汇总，采用荣誉制</footer>
           </section>
@@ -250,6 +327,10 @@ import {
     });
 
     element.querySelector(".leaderboard-save")?.addEventListener("click", saveDraftProfile);
+    element.querySelector("[data-recovery-copy]")?.addEventListener("click", copyRecoveryCode);
+    element.querySelector("[data-recovery-open]")?.addEventListener("click", openRecoveryForm);
+    element.querySelector("[data-recovery-cancel]")?.addEventListener("click", closeRecoveryForm);
+    element.querySelector("[data-recovery-verify]")?.addEventListener("click", verifyRecoveryCode);
     element.querySelector(".leaderboard-refresh")?.addEventListener("click", () => loadBoards());
     element.querySelectorAll("[data-tab]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -290,6 +371,92 @@ import {
     const focusTarget = dialogOpener?.isConnected ? dialogOpener : trigger;
     focusTarget?.focus();
     dialogOpener = null;
+  }
+
+  async function writeClipboard(value) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.select();
+    const copied = typeof document.execCommand === "function" && document.execCommand("copy");
+    textarea.remove();
+    if (!copied) throw new Error("当前浏览器不支持自动复制");
+  }
+
+  async function copyRecoveryCode() {
+    const validation = validatePublicId(state.profile.publicId);
+    if (!validation.valid) {
+      setStatus("请先创建并保存自定义 ID，再生成恢复码", "warning");
+      overlay?.querySelector(".leaderboard-id-field input")?.focus();
+      return;
+    }
+    try {
+      await writeClipboard(createRecoveryCode(state.profile, readRecords()));
+      setStatus("恢复码已复制，请保存在只有您能访问的地方", "success");
+      navigator.vibrate?.(10);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "恢复码复制失败", "error");
+    }
+  }
+
+  function openRecoveryForm() {
+    state.recoveryOpen = true;
+    state.recoveryCandidate = null;
+    state.recoveryMessage = "";
+    state.recoveryTone = "";
+    renderRecovery();
+    window.setTimeout(() => overlay?.querySelector("#leaderboard-recovery-code")?.focus(), 0);
+  }
+
+  function closeRecoveryForm() {
+    state.recoveryOpen = false;
+    state.recoveryCandidate = null;
+    state.recoveryMessage = "";
+    state.recoveryTone = "";
+    const input = overlay?.querySelector("#leaderboard-recovery-code");
+    if (input) input.value = "";
+    renderRecovery();
+  }
+
+  function verifyRecoveryCode() {
+    const input = overlay?.querySelector("#leaderboard-recovery-code");
+    const parsed = parseRecoveryCode(input?.value || "");
+    state.recoveryCandidate = parsed.valid ? parsed : null;
+    state.recoveryMessage = parsed.valid
+      ? "恢复码有效，请核对后确认恢复。"
+      : parsed.error;
+    state.recoveryTone = parsed.valid ? "success" : "error";
+    renderRecovery();
+  }
+
+  function confirmRecovery() {
+    const candidate = state.recoveryCandidate;
+    if (!candidate?.valid) return;
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(candidate.profile));
+      localStorage.setItem(RECORDS_KEY, JSON.stringify(candidate.records));
+      localStorage.removeItem(RANK_SNAPSHOT_KEY);
+      state.profile = candidate.profile;
+      state.draftId = candidate.profile.publicId;
+      state.draftPublic = candidate.profile.isPublic;
+      state.rankPrevious = { ninja: null, rush: null };
+      state.recoveryMessage = `已恢复 ${candidate.profile.publicId}，页面即将刷新`;
+      state.recoveryTone = "success";
+      render();
+      navigator.vibrate?.(16);
+      window.setTimeout(() => window.location.reload(), 650);
+    } catch {
+      state.recoveryMessage = "当前浏览器无法写入恢复数据";
+      state.recoveryTone = "error";
+      renderRecovery();
+    }
   }
 
   async function saveDraftProfile() {
@@ -383,6 +550,59 @@ import {
     );
   }
 
+  function renderMilestones() {
+    const list = overlay?.querySelector(".leaderboard-milestone-list");
+    const count = overlay?.querySelector("[data-leaderboard-badge-count]");
+    if (!list) return;
+    const current = scores();
+    const types = [
+      { type: "ninja", label: "忍者成就", days: current.ninjaDays },
+      { type: "rush", label: "连冲成就", days: current.rushDays },
+    ];
+    const unlocked = types.reduce((total, item) => total + milestoneState(item.days, item.type).earned.length, 0);
+    if (count) count.textContent = `${unlocked}/${MILESTONES.length * 2} 已解锁`;
+    list.innerHTML = types.map((item) => {
+      const progress = milestoneState(item.days, item.type);
+      const nextText = progress.next
+        ? `距「${progress.next[item.type]}」还差 ${progress.next.days - progress.days} 天`
+        : "全部里程碑已解锁";
+      const badges = MILESTONES.map((milestone) => {
+        const earned = progress.days >= milestone.days;
+        return `<span class="leaderboard-badge${earned ? " is-earned" : ""}" aria-label="${escapeHtml(milestone[item.type])}，${milestone.days} 天，${earned ? "已解锁" : "未解锁"}">
+          <b>${milestone.days}</b><small>${escapeHtml(milestone[item.type])}</small>
+        </span>`;
+      }).join("");
+      return `<article class="leaderboard-milestone-track" data-milestone-type="${item.type}">
+        <header><div><span>${item.label}</span><strong>${escapeHtml(progress.currentLabel)}</strong></div><em>${item.days} 天</em></header>
+        <div class="leaderboard-badges">${badges}</div>
+        <div class="leaderboard-milestone-progress" aria-hidden="true"><i style="width:${progress.progress.toFixed(2)}%"></i></div>
+        <p>${escapeHtml(nextText)}</p>
+      </article>`;
+    }).join("");
+  }
+
+  function renderRecovery() {
+    const form = overlay?.querySelector(".leaderboard-recovery-form");
+    const status = overlay?.querySelector(".leaderboard-recovery-status");
+    const candidate = overlay?.querySelector(".leaderboard-recovery-candidate");
+    if (!form || !status || !candidate) return;
+    form.hidden = !state.recoveryOpen;
+    status.textContent = state.recoveryMessage;
+    status.dataset.tone = state.recoveryTone;
+    const parsed = state.recoveryCandidate;
+    if (!parsed?.valid) {
+      candidate.hidden = true;
+      candidate.innerHTML = "";
+      return;
+    }
+    const recordCount = Object.keys(parsed.records).length;
+    candidate.hidden = false;
+    candidate.innerHTML = `<div><span>将恢复的身份</span><strong>${escapeHtml(parsed.profile.publicId)}</strong></div>
+      <dl><div><dt>公开设置</dt><dd>${parsed.profile.isPublic ? "公开参与" : "不公开"}</dd></div><div><dt>打卡记录</dt><dd>${recordCount} 天</dd></div></dl>
+      <button type="button" data-recovery-confirm>确认恢复并覆盖本机数据</button>`;
+    candidate.querySelector("[data-recovery-confirm]")?.addEventListener("click", confirmRecovery);
+  }
+
   function renderProfile() {
     if (!overlay) return;
     const input = overlay.querySelector(".leaderboard-id-field input");
@@ -394,6 +614,7 @@ import {
     }
     renderIdCount();
     renderVisibility();
+    renderRecovery();
   }
 
   function renderTabs() {
@@ -412,10 +633,34 @@ import {
     const label = overlay.querySelector("[data-leaderboard-board-label]");
     const currentValue = overlay.querySelector("[data-leaderboard-current-days]");
     const rank = overlay.querySelector("[data-leaderboard-my-rank]");
+    const insight = overlay.querySelector("[data-leaderboard-rank-insight]");
     const list = overlay.querySelector(".leaderboard-list");
     if (label) label.textContent = state.tab === "ninja" ? "连续忍住天数" : "连续冲的天数";
     if (currentValue) currentValue.innerHTML = `${state.tab === "ninja" ? current.ninjaDays : current.rushDays}<small> 天</small>`;
     if (rank) rank.textContent = state.profile.isPublic ? (own ? `#${own.rank}` : "等待上榜") : "未公开";
+    if (insight) {
+      if (!state.profile.isPublic) {
+        insight.textContent = "公开参与后显示名次变化";
+        insight.dataset.tone = "muted";
+      } else if (!own) {
+        insight.textContent = "完成连续记录后即可进入本榜";
+        insight.dataset.tone = "muted";
+      } else {
+        const previous = state.rankPrevious[state.tab];
+        const movement = Number.isFinite(previous) ? previous - Number(own.rank) : null;
+        const index = entries.indexOf(own);
+        const gap = index > 0 ? Math.max(1, Number(entries[index - 1].days) - Number(own.days) + 1) : 0;
+        const movementText = movement === null
+          ? "首次记录排名"
+          : movement > 0
+            ? `今日上升 ${movement} 名`
+            : movement < 0
+              ? `今日下降 ${Math.abs(movement)} 名`
+              : "今日排名不变";
+        insight.textContent = index === 0 ? `${movementText} · 当前榜首` : `${movementText} · 距上一名还差 ${gap} 天`;
+        insight.dataset.tone = movement > 0 ? "up" : movement < 0 ? "down" : "steady";
+      }
+    }
     if (!list) return;
 
     if (state.loading && entries.length === 0) {
@@ -458,6 +703,7 @@ import {
 
   function render() {
     renderScores();
+    renderMilestones();
     renderProfile();
     renderTabs();
     renderBoard();
