@@ -27,9 +27,11 @@ import {
   state.draftPublic = state.profile.isPublic;
 
   let trigger = null;
+  let inlineEntry = null;
   let overlay = null;
   let syncTimer = 0;
   let previousOverflow = "";
+  let dialogOpener = null;
 
   const trophyIcon = `
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -139,7 +141,29 @@ import {
     button.setAttribute("aria-haspopup", "dialog");
     button.setAttribute("aria-controls", "leaderboard-dialog");
     button.innerHTML = `${trophyIcon}<span>排行榜</span><b data-leaderboard-trigger-count>0</b>`;
-    button.addEventListener("click", openDialog);
+    button.addEventListener("click", (event) => openDialog(event.currentTarget));
+    return button;
+  }
+
+  function createInlineEntry() {
+    const button = document.createElement("button");
+    button.className = "leaderboard-inline-entry";
+    button.type = "button";
+    button.setAttribute("aria-haspopup", "dialog");
+    button.setAttribute("aria-controls", "leaderboard-dialog");
+    button.innerHTML = `
+      <span class="leaderboard-inline-icon">${trophyIcon}</span>
+      <span class="leaderboard-inline-copy">
+        <small>双榜排行</small>
+        <strong>看看今天谁在坚持</strong>
+        <em data-leaderboard-inline-status>公开由您决定 · 日历不会上传</em>
+      </span>
+      <span class="leaderboard-inline-scores" aria-hidden="true">
+        <span><b data-leaderboard-inline-ninja>0</b><small>忍住</small></span>
+        <span><b data-leaderboard-inline-rush>0</b><small>连冲</small></span>
+      </span>
+      <span class="leaderboard-inline-cta">查看双榜</span>`;
+    button.addEventListener("click", (event) => openDialog(event.currentTarget));
     return button;
   }
 
@@ -238,8 +262,9 @@ import {
     return element;
   }
 
-  function openDialog() {
+  function openDialog(opener = null) {
     if (!overlay) return;
+    dialogOpener = opener instanceof window.HTMLElement ? opener : document.activeElement;
     state.open = true;
     state.draftId = state.profile.publicId;
     state.draftPublic = state.profile.isPublic;
@@ -262,7 +287,9 @@ import {
     window.setTimeout(() => {
       if (!state.open && overlay) overlay.hidden = true;
     }, 260);
-    trigger?.focus();
+    const focusTarget = dialogOpener?.isConnected ? dialogOpener : trigger;
+    focusTarget?.focus();
+    dialogOpener = null;
   }
 
   async function saveDraftProfile() {
@@ -330,6 +357,12 @@ import {
       badge.classList.toggle("is-public", state.profile.isPublic);
       badge.innerHTML = `<i></i>${state.profile.isPublic ? "公开中" : "未公开"}`;
     }
+    const inlineStatus = inlineEntry?.querySelector("[data-leaderboard-inline-status]");
+    if (inlineStatus) {
+      inlineStatus.textContent = state.profile.isPublic
+        ? "已公开参与 · 点此查看我的排名"
+        : "公开由您决定 · 日历不会上传";
+    }
   }
 
   function renderScores() {
@@ -337,9 +370,17 @@ import {
     const ninja = overlay?.querySelector("[data-leaderboard-ninja-days]");
     const rush = overlay?.querySelector("[data-leaderboard-rush-days]");
     const triggerCount = trigger?.querySelector("[data-leaderboard-trigger-count]");
+    const inlineNinja = inlineEntry?.querySelector("[data-leaderboard-inline-ninja]");
+    const inlineRush = inlineEntry?.querySelector("[data-leaderboard-inline-rush]");
     if (ninja) ninja.innerHTML = `${current.ninjaDays}<small> 天</small>`;
     if (rush) rush.innerHTML = `${current.rushDays}<small> 天</small>`;
     if (triggerCount) triggerCount.textContent = String(current.ninjaDays);
+    if (inlineNinja) inlineNinja.textContent = String(current.ninjaDays);
+    if (inlineRush) inlineRush.textContent = String(current.rushDays);
+    inlineEntry?.setAttribute(
+      "aria-label",
+      `打开自律排行榜，当前连续忍住 ${current.ninjaDays} 天，连续冲了 ${current.rushDays} 天`,
+    );
   }
 
   function renderProfile() {
@@ -424,15 +465,21 @@ import {
 
   function ensureMounted() {
     const topbar = document.querySelector(".topbar");
+    const stats = document.querySelector(".stats");
     if (!trigger) trigger = createTrigger();
+    if (!inlineEntry) inlineEntry = createInlineEntry();
     if (topbar && !trigger.isConnected) {
       topbar.insertBefore(trigger, topbar.querySelector(".menu-wrap"));
+    }
+    if (stats && (!inlineEntry.isConnected || inlineEntry.nextElementSibling !== stats)) {
+      stats.before(inlineEntry);
     }
     if (!overlay) {
       overlay = createDialog();
       document.body.append(overlay);
     }
     renderScores();
+    renderVisibility();
   }
 
   document.addEventListener("click", (event) => {
@@ -457,7 +504,10 @@ import {
   });
 
   const mountObserver = new MutationObserver(() => {
-    if (!trigger?.isConnected) ensureMounted();
+    const stats = document.querySelector(".stats");
+    const inlineEntryNeedsMount = stats
+      && (!inlineEntry?.isConnected || inlineEntry.nextElementSibling !== stats);
+    if (!trigger?.isConnected || inlineEntryNeedsMount) ensureMounted();
   });
   mountObserver.observe(root, { childList: true, subtree: true });
   ensureMounted();
