@@ -1,0 +1,37 @@
+name: PWA reminder dispatch
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: chonglema-push-reminders
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Send due reminders
+        uses: actions/github-script@v9
+        env:
+          PUSH_API_URL: https://chonglema-leaderboard-api.sechs6666.chatgpt.site/v1/push/tick
+        with:
+          script: |
+            const token = await core.getIDToken("chonglema-push-reminders");
+            const response = await fetch(process.env.PUSH_API_URL, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const body = await response.text();
+            if (!response.ok) {
+              core.setFailed(`Reminder dispatch failed (${response.status}): ${body}`);
+              return;
+            }
+            core.info(body);

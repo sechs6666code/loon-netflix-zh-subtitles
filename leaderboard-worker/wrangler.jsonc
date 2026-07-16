@@ -6,6 +6,9 @@
   "vars": {
     "ALLOWED_ORIGINS": "https://sechs6666code.github.io,http://localhost:5173,http://127.0.0.1:5173,http://terminal.local:5173"
   },
+  "triggers": {
+    "crons": ["7,22,37,52 * * * *"]
+  },
   "d1_databases": [
     {
       "binding": "DB",

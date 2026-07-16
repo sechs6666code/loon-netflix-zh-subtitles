@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import worker, {
   hashToken,
+  isReminderDue,
   normalizeDays,
   normalizePublicId,
+  zonedClock,
 } from "../leaderboard-worker/src/index.js";
 
 assert.equal(normalizePublicId("  忍者-01 "), "忍者-01");
@@ -10,19 +12,33 @@ assert.equal(normalizeDays(-4), 0);
 assert.equal(normalizeDays(7.9), 7);
 assert.equal(normalizeDays(999999), 20000);
 assert.equal((await hashToken("a".repeat(32))).length, 64);
+assert.deepEqual(zonedClock(new Date("2026-07-15T12:35:00Z"), "Asia/Shanghai"), {
+  date: "2026-07-15",
+  minutes: 1235,
+});
+assert.equal(isReminderDue("20:30", { date: "2026-07-15", minutes: 1235 }, null), true);
+assert.equal(isReminderDue("20:30", { date: "2026-07-15", minutes: 1235 }, "2026-07-15"), false);
 
-const env = { ALLOWED_ORIGINS: "https://sechs6666code.github.io" };
+const env = {
+  ALLOWED_ORIGINS: "https://sechs6666code.github.io",
+  VAPID_PUBLIC_KEY: "public-test-key",
+};
 const health = await worker.fetch(new Request("https://api.example.test/health", {
   headers: { Origin: "https://sechs6666code.github.io" },
 }), env);
 assert.equal(health.status, 200);
 assert.equal(health.headers.get("Access-Control-Allow-Origin"), "https://sechs6666code.github.io");
-assert.deepEqual(await health.json(), { ok: true });
+assert.deepEqual(await health.json(), { ok: true, push: true });
 
 const blocked = await worker.fetch(new Request("https://api.example.test/health", {
   headers: { Origin: "https://attacker.example" },
 }), env);
 assert.equal(blocked.status, 403);
+
+const pushConfig = await worker.fetch(new Request("https://api.example.test/v1/push/config", {
+  headers: { Origin: "https://sechs6666code.github.io" },
+}), env);
+assert.equal((await pushConfig.json()).publicKey, "public-test-key");
 
 class MemoryStatement {
   constructor(database, sql) {
@@ -64,13 +80,13 @@ class MemoryStatement {
       return { success: true };
     }
     if (this.sql.startsWith("UPDATE")) {
-      const [publicId, publicIdKey, isPublic, ninjaDays, rushDays, updatedAt, ownerHash] = this.values;
+      const [publicId, publicIdKey, ninjaDays, rushDays, updatedAt, ownerHash] = this.values;
       const row = this.database.rows.find((entry) => entry.ownerHash === ownerHash);
-      Object.assign(row, { publicId, publicIdKey, isPublic, ninjaDays, rushDays, updatedAt });
+      Object.assign(row, { publicId, publicIdKey, isPublic: 1, ninjaDays, rushDays, updatedAt });
       return { success: true };
     }
     if (this.sql.startsWith("INSERT")) {
-      const [publicId, publicIdKey, ownerHash, isPublic, ninjaDays, rushDays, updatedAt] = this.values;
+      const [publicId, publicIdKey, ownerHash, ninjaDays, rushDays, updatedAt] = this.values;
       if (this.database.rows.some((entry) => entry.publicIdKey === publicIdKey || entry.ownerHash === ownerHash)) {
         throw new Error("UNIQUE constraint failed");
       }
@@ -79,7 +95,7 @@ class MemoryStatement {
         publicId,
         publicIdKey,
         ownerHash,
-        isPublic,
+        isPublic: 1,
         ninjaDays,
         rushDays,
         updatedAt,
