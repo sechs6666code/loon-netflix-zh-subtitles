@@ -95,13 +95,27 @@ assert.equal(overlay.hidden, false, "clicking the trigger should open the leader
 assert.equal(
   overlay.querySelector(".leaderboard-local-scores").nextElementSibling,
   overlay.querySelector(".leaderboard-board-card"),
-  "the leaderboard should appear immediately above milestones",
+  "the leaderboard should follow the local score summary",
 );
 assert.equal(
   overlay.querySelector(".leaderboard-board-card").nextElementSibling,
-  overlay.querySelector(".leaderboard-milestones"),
-  "milestones should follow the leaderboard",
+  overlay.querySelector(".leaderboard-profile-card"),
+  "the profile controls should appear before milestones",
 );
+assert.equal(
+  overlay.querySelector(".leaderboard-profile-card").nextElementSibling,
+  overlay.querySelector(".leaderboard-milestones"),
+  "milestones should follow the profile controls",
+);
+assert.equal(
+  overlay.querySelector("[data-leaderboard-profile-jump]").parentElement,
+  overlay.querySelector(".leaderboard-panel"),
+  "the mobile participation action should stay fixed outside the scrolling content",
+);
+let profileJumped = false;
+overlay.querySelector(".leaderboard-profile-card").scrollIntoView = () => { profileJumped = true; };
+overlay.querySelector("[data-leaderboard-profile-jump]").click();
+assert.equal(profileJumped, true, "the sticky participation action should reveal profile controls");
 const input = overlay.querySelector(".leaderboard-id-field input");
 input.value = "忍者007";
 input.dispatchEvent(new window.Event("input", { bubbles: true }));

@@ -206,6 +206,24 @@
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
+.pwa-time-help {
+  margin: 7px 3px 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: right;
+}
+.pwa-permission-help {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--red) 20%, var(--line));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--red) 7%, transparent);
+  color: color-mix(in srgb, var(--red) 86%, var(--text));
+  font-size: 11px;
+  line-height: 1.55;
+}
+.pwa-permission-help[hidden] { display: none; }
 .pwa-reminder-message { min-height: 18px; margin: 10px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .pwa-reminder-message[data-tone="success"] { color: color-mix(in srgb, var(--green) 82%, var(--text)); }
 .pwa-reminder-message[data-tone="error"], .pwa-reminder-message[data-tone="warning"] { color: var(--red); }

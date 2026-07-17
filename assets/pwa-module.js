@@ -1,7 +1,12 @@
 (() => {
   const STORAGE_KEY = "chonglema-push-reminder-v1";
+  const RECORDS_KEY = "did-you-v1";
+  const PRIVATE_DB = "chonglema-private-state";
+  const PRIVATE_STORE = "state";
+  const TODAY_STATE_KEY = "today-record";
   const API_BASE = String(window.CHONGLEMA_LEADERBOARD_API || "").trim().replace(/\/+$/, "");
   const DEFAULT_TIME = "21:30";
+  let privateStateSyncTimer = 0;
 
   function timezone() {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -27,12 +32,78 @@
   const isStandalone = () => window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone === true;
   const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 
+  function localDateKey(date = new Date()) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  function normalizeReminderTime(value) {
+    const raw = String(value || "").trim();
+    const normalizedRaw = /^\d{4}$/.test(raw) ? `${raw.slice(0, 2)}:${raw.slice(2)}` : raw;
+    const match = normalizedRaw.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours > 23 || minutes > 59) return null;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+
+  function openPrivateStateDb() {
+    if (!("indexedDB" in window)) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const request = window.indexedDB.open(PRIVATE_DB, 1);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(PRIVATE_STORE)) {
+          request.result.createObjectStore(PRIVATE_STORE, { keyPath: "key" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+    });
+  }
+
+  async function syncTodayRecordState() {
+    let recorded = false;
+    try {
+      const records = JSON.parse(localStorage.getItem(RECORDS_KEY) || "{}");
+      recorded = records?.[localDateKey()] === "yes" || records?.[localDateKey()] === "no";
+    } catch {
+      recorded = false;
+    }
+    const db = await openPrivateStateDb();
+    if (!db) return;
+    try {
+      const transaction = db.transaction(PRIVATE_STORE, "readwrite");
+      transaction.objectStore(PRIVATE_STORE).put({
+        key: TODAY_STATE_KEY,
+        date: localDateKey(),
+        recorded,
+        updatedAt: Date.now(),
+      });
+    } catch {
+      // Reminder delivery remains available if private browser storage is blocked.
+    }
+  }
+
+  function scheduleTodayRecordSync() {
+    window.clearTimeout(privateStateSyncTimer);
+    privateStateSyncTimer = window.setTimeout(syncTodayRecordState, 80);
+  }
+
+  function syncSavedStatusAccessibility() {
+    document.querySelectorAll(".saved").forEach((status) => {
+      const visible = status.classList.contains("show");
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
+      status.setAttribute("aria-hidden", visible ? "false" : "true");
+    });
+  }
+
   function readLocalState() {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
       return {
         enabled: stored?.enabled === true,
-        reminderTime: /^\d{2}:\d{2}$/.test(stored?.reminderTime) ? stored.reminderTime : DEFAULT_TIME,
+        reminderTime: normalizeReminderTime(stored?.reminderTime) || DEFAULT_TIME,
         timezone: typeof stored?.timezone === "string" ? stored.timezone : timezone(),
       };
     } catch {
@@ -127,7 +198,9 @@
           </section>
           <section class="pwa-schedule-card">
             <div class="pwa-schedule-heading"><div><small>提醒时间</small><strong>每天固定一次</strong></div><span data-pwa-permission>尚未授权</span></div>
-            <label class="pwa-time-field" for="pwa-reminder-time"><span>每天</span><input id="pwa-reminder-time" type="time" step="300"></label>
+            <label class="pwa-time-field" for="pwa-reminder-time"><span>每天</span><input id="pwa-reminder-time" type="text" inputmode="numeric" maxlength="5" placeholder="21:30" autocomplete="off" aria-describedby="pwa-time-help"></label>
+            <p class="pwa-time-help" id="pwa-time-help">24 小时制，例如 21:30</p>
+            <p class="pwa-permission-help" data-pwa-permission-help hidden></p>
             <p class="pwa-reminder-message" data-pwa-message aria-live="polite"></p>
             <div class="pwa-reminder-actions">
               <button class="pwa-reminder-primary" type="button" data-pwa-enable>开启每日提醒</button>
@@ -135,7 +208,7 @@
               <button class="pwa-reminder-disable" type="button" data-pwa-disable hidden>关闭提醒</button>
             </div>
           </section>
-          <section class="pwa-privacy-note"><strong>隐私保持不变</strong><p>只同步匿名推送地址、提醒时间和时区；不会上传打卡日历，也不会判断您今天是否已经记录。</p></section>
+          <section class="pwa-privacy-note"><strong>隐私保持不变</strong><p>只同步匿名推送地址、提醒时间和时区；不会上传打卡日历。服务器不会收到打卡状态，本机会在今天已记录时静默当天提醒。</p></section>
           <p class="pwa-offline-note">安装后可离线打开并查看本机已有记录；排行榜和提醒设置需要联网。</p>
         </div>
       </section>`;
@@ -145,6 +218,17 @@
     overlay.querySelector("[data-pwa-test]")?.addEventListener("click", sendTestNotification);
     overlay.querySelector("[data-pwa-disable]")?.addEventListener("click", disableReminder);
     overlay.querySelector("[data-pwa-install-button]")?.addEventListener("click", installApp);
+    overlay.querySelector("#pwa-reminder-time")?.addEventListener("input", (event) => {
+      const raw = event.currentTarget.value;
+      if (!raw.includes(":")) {
+        const digits = raw.replace(/\D/g, "").slice(0, 4);
+        event.currentTarget.value = digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
+      }
+    });
+    overlay.querySelector("#pwa-reminder-time")?.addEventListener("blur", (event) => {
+      const normalized = normalizeReminderTime(event.currentTarget.value);
+      if (normalized) event.currentTarget.value = normalized;
+    });
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) closeDialog();
     });
@@ -204,10 +288,17 @@
     const input = state.overlay.querySelector("#pwa-reminder-time");
     if (input && document.activeElement !== input) input.value = state.local.reminderTime;
     const permission = state.overlay.querySelector("[data-pwa-permission]");
+    const permissionHelp = state.overlay.querySelector("[data-pwa-permission-help]");
+    const permissionValue = pushSupported() ? Notification.permission : "unsupported";
     if (permission) {
-      const value = pushSupported() ? Notification.permission : "unsupported";
-      permission.textContent = value === "granted" ? "通知已授权" : value === "denied" ? "通知已拒绝" : value === "unsupported" ? "浏览器不支持" : "尚未授权";
-      permission.dataset.state = value;
+      permission.textContent = permissionValue === "granted" ? "通知已授权" : permissionValue === "denied" ? "通知已拒绝" : permissionValue === "unsupported" ? "浏览器不支持" : "尚未授权";
+      permission.dataset.state = permissionValue;
+    }
+    if (permissionHelp) {
+      permissionHelp.hidden = permissionValue !== "denied";
+      permissionHelp.textContent = isIos
+        ? "请到系统设置 → 通知 → 冲了吗，允许通知后重新打开应用。"
+        : "请在浏览器的网站设置中重新允许通知，再返回此处。";
     }
     const message = state.overlay.querySelector("[data-pwa-message]");
     if (message) {
@@ -218,9 +309,10 @@
     const test = state.overlay.querySelector("[data-pwa-test]");
     const disable = state.overlay.querySelector("[data-pwa-disable]");
     const blockedOnIos = isIos && !isStandalone();
+    const permissionDenied = permissionValue === "denied";
     if (enable) {
-      enable.disabled = state.busy || !pushSupported() || blockedOnIos;
-      enable.textContent = state.busy ? "正在处理…" : enabled ? "保存提醒时间" : "开启每日提醒";
+      enable.disabled = state.busy || !pushSupported() || blockedOnIos || permissionDenied;
+      enable.textContent = state.busy ? "正在处理…" : permissionDenied ? "请先恢复通知权限" : enabled ? "保存提醒时间" : "开启每日提醒";
     }
     if (test) {
       test.hidden = !enabled;
@@ -243,7 +335,12 @@
       return;
     }
     const input = state.overlay.querySelector("#pwa-reminder-time");
-    const reminderTime = input?.value || DEFAULT_TIME;
+    const reminderTime = normalizeReminderTime(input?.value);
+    if (!reminderTime) {
+      setMessage("请输入 00:00—23:59 的 24 小时时间", "error");
+      input?.focus();
+      return;
+    }
     state.busy = true;
     setMessage("", "");
     try {
@@ -266,7 +363,7 @@
       });
       state.subscription = subscription;
       writeLocalState({ enabled: true, reminderTime });
-      setMessage("已保存。定时任务每 5 分钟检查一次，提醒可能有几分钟浮动。", "success");
+      setMessage("已保存。定时任务约每 15 分钟检查一次，提醒时间可能有少量浮动。", "success");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "提醒开启失败，请稍后再试", "error");
     } finally {
@@ -369,6 +466,7 @@
       stats.before(state.entry);
       changed = true;
     }
+    syncSavedStatusAccessibility();
     if (changed) render();
   }
 
@@ -386,13 +484,24 @@
       state.local = readLocalState();
       refreshSubscription().then(render);
     }
+    if (event.key === RECORDS_KEY) scheduleTodayRecordSync();
+  });
+  document.addEventListener("click", (event) => {
+    if (event.target.closest?.(".answer, .history-actions button")) scheduleTodayRecordSync();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") scheduleTodayRecordSync();
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.open) closeDialog();
   });
 
-  const observer = new MutationObserver(ensureMounted);
+  const observer = new MutationObserver(() => {
+    ensureMounted();
+    scheduleTodayRecordSync();
+  });
   observer.observe(document.documentElement, { childList: true, subtree: true });
   ensureMounted();
+  scheduleTodayRecordSync();
   refreshSubscription().then(render);
 })();
