@@ -92,9 +92,15 @@
   function syncSavedStatusAccessibility() {
     document.querySelectorAll(".saved").forEach((status) => {
       const visible = status.classList.contains("show");
-      status.setAttribute("role", "status");
-      status.setAttribute("aria-live", "polite");
-      status.setAttribute("aria-hidden", visible ? "false" : "true");
+      if (visible) {
+        status.setAttribute("role", "status");
+        status.setAttribute("aria-live", "polite");
+        status.setAttribute("aria-hidden", "false");
+      } else {
+        status.removeAttribute("role");
+        status.removeAttribute("aria-live");
+        status.setAttribute("aria-hidden", "true");
+      }
     });
   }
 
