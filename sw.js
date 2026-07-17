@@ -1,4 +1,7 @@
-const CACHE_NAME = "chonglema-shell-20260716-1";
+const CACHE_NAME = "chonglema-shell-20260717-1";
+const PRIVATE_DB = "chonglema-private-state";
+const PRIVATE_STORE = "state";
+const TODAY_STATE_KEY = "today-record";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,15 +13,45 @@ const APP_SHELL = [
   "./assets/refine-motion.js",
   "./assets/recovery-module.css",
   "./assets/recovery-module.js",
-  "./assets/leaderboard-module.css",
-  "./assets/leaderboard-module.js",
+  "./assets/leaderboard-module.css?v=20260717-1",
+  "./assets/leaderboard-module.js?v=20260717-1",
   "./assets/leaderboard-core.js",
   "./assets/leaderboard-config.js",
-  "./assets/pwa-module.css",
-  "./assets/pwa-module.js",
+  "./assets/pwa-module.css?v=20260717-1",
+  "./assets/pwa-module.js?v=20260717-1",
   "./assets/pwa-icon-192.png",
   "./assets/pwa-icon-512.png",
 ];
+
+function localDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function readTodayRecordState() {
+  if (typeof indexedDB === "undefined") return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const request = indexedDB.open(PRIVATE_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(PRIVATE_STORE)) {
+        request.result.createObjectStore(PRIVATE_STORE, { keyPath: "key" });
+      }
+    };
+    request.onerror = () => resolve(false);
+    request.onsuccess = () => {
+      try {
+        const transaction = request.result.transaction(PRIVATE_STORE, "readonly");
+        const getRequest = transaction.objectStore(PRIVATE_STORE).get(TODAY_STATE_KEY);
+        getRequest.onerror = () => resolve(false);
+        getRequest.onsuccess = () => {
+          const value = getRequest.result;
+          resolve(Boolean(value?.recorded && value.date === localDateKey()));
+        };
+      } catch {
+        resolve(false);
+      }
+    };
+  });
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -72,14 +105,18 @@ self.addEventListener("push", (event) => {
   } catch {
     payload = { body: event.data?.text() || "花几秒记一下，保持自己的节奏。" };
   }
-  event.waitUntil(self.registration.showNotification(payload.title || "今天，冲了吗？", {
-    body: payload.body || "花几秒记一下，保持自己的节奏。",
-    icon: "./assets/pwa-icon-192.png",
-    badge: "./assets/pwa-icon-192.png",
-    tag: payload.tag || "chonglema-daily",
-    renotify: false,
-    data: { url: payload.url || "./?source=push" },
-  }));
+  event.waitUntil((async () => {
+    const isDailyReminder = (payload.tag || "chonglema-daily") === "chonglema-daily";
+    if (isDailyReminder && await readTodayRecordState()) return;
+    await self.registration.showNotification(payload.title || "今天，冲了吗？", {
+      body: payload.body || "花几秒记一下，保持自己的节奏。",
+      icon: "./assets/pwa-icon-192.png",
+      badge: "./assets/pwa-icon-192.png",
+      tag: payload.tag || "chonglema-daily",
+      renotify: false,
+      data: { url: payload.url || "./?source=push" },
+    });
+  })());
 });
 
 self.addEventListener("notificationclick", (event) => {

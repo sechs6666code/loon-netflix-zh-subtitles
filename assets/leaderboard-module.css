@@ -288,6 +288,7 @@
 }
 
 .leaderboard-scroll {
+  flex: 1;
   min-height: 0;
   padding: 18px 22px 28px;
   overflow-y: auto;
@@ -389,6 +390,10 @@
   border-radius: 21px;
   background: color-mix(in srgb, var(--card) 92%, transparent);
   box-shadow: inset 0 1px rgba(255, 255, 255, .75), 0 13px 34px rgba(38, 62, 49, .055);
+}
+
+.leaderboard-profile-jump {
+  display: none;
 }
 
 .leaderboard-milestones [data-leaderboard-badge-count] {
@@ -1454,6 +1459,7 @@
 .leaderboard-recovery button:focus-visible,
 .leaderboard-recovery-file:focus-within,
 .leaderboard-refresh:focus-visible,
+.leaderboard-profile-jump:focus-visible,
 .leaderboard-save:focus-visible,
 .leaderboard-visibility-choice button:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--green) 30%, transparent);
@@ -1540,6 +1546,29 @@
 
   .leaderboard-scroll {
     padding: 14px 14px 24px;
+  }
+
+  .leaderboard-profile-jump {
+    z-index: 6;
+    flex: none;
+    width: calc(100% - 28px);
+    min-height: 46px;
+    margin: 10px 14px max(12px, env(safe-area-inset-bottom));
+    padding: 0 18px;
+    border: 1px solid color-mix(in srgb, var(--green) 32%, rgba(255, 255, 255, .72));
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--text) 94%, transparent);
+    color: var(--solid);
+    box-shadow: 0 14px 36px rgba(24, 42, 33, .24), inset 0 1px rgba(255, 255, 255, .14);
+    backdrop-filter: blur(22px) saturate(140%);
+    display: block;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 720;
+  }
+
+  .leaderboard-profile-jump:active {
+    transform: scale(.985);
   }
 
   .leaderboard-profile-card,

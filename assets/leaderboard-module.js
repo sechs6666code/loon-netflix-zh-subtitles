@@ -255,14 +255,6 @@ import {
             <footer>TOP 100 · 数据来自用户本机历史记录汇总，采用荣誉制</footer>
           </section>
 
-          <section class="leaderboard-milestones" aria-labelledby="leaderboard-milestone-title">
-            <div class="leaderboard-section-title">
-              <div><small>MILESTONES</small><h3 id="leaderboard-milestone-title">里程碑徽章</h3></div>
-              <span data-leaderboard-badge-count>0/10 已解锁</span>
-            </div>
-            <div class="leaderboard-milestone-list"></div>
-          </section>
-
           <section class="leaderboard-profile-card">
             <div class="leaderboard-section-title">
               <div><small>MY PROFILE</small><h3>我的榜单身份</h3></div>
@@ -311,7 +303,16 @@ import {
             </section>
           </section>
 
+          <section class="leaderboard-milestones" aria-labelledby="leaderboard-milestone-title">
+            <div class="leaderboard-section-title">
+              <div><small>MILESTONES</small><h3 id="leaderboard-milestone-title">里程碑徽章</h3></div>
+              <span data-leaderboard-badge-count>0/10 已解锁</span>
+            </div>
+            <div class="leaderboard-milestone-list"></div>
+          </section>
+
         </div>
+        <button class="leaderboard-profile-jump" type="button" data-leaderboard-profile-jump>参与排行榜</button>
       </section>`;
 
     element.querySelector(".leaderboard-close")?.addEventListener("click", closeDialog);
@@ -336,6 +337,13 @@ import {
     });
 
     element.querySelector(".leaderboard-save")?.addEventListener("click", saveDraftProfile);
+    element.querySelector("[data-leaderboard-profile-jump]")?.addEventListener("click", () => {
+      const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      element.querySelector(".leaderboard-profile-card")?.scrollIntoView({
+        behavior: reducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    });
     element.querySelector("[data-recovery-copy]")?.addEventListener("click", copyRecoveryCode);
     element.querySelector("[data-recovery-qr]")?.addEventListener("click", showRecoveryQr);
     element.querySelector("[data-recovery-download]")?.addEventListener("click", downloadRecoveryFile);
@@ -715,10 +723,12 @@ import {
     const input = overlay.querySelector(".leaderboard-id-field input");
     if (input && document.activeElement !== input) input.value = state.draftId;
     const saveButton = overlay.querySelector(".leaderboard-save");
+    const profileJump = overlay.querySelector("[data-leaderboard-profile-jump]");
     if (saveButton) {
       saveButton.disabled = state.saving;
       saveButton.textContent = state.saving ? "正在保存…" : state.profile.publicId ? "保存并更新排名" : "创建榜单身份";
     }
+    if (profileJump) profileJump.textContent = state.profile.publicId ? "管理榜单身份" : "参与排行榜";
     renderIdCount();
     renderVisibility();
     renderRecovery();
