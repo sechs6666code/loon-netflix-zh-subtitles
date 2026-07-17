@@ -86,9 +86,15 @@ window.eval(source);
 await new Promise((resolve) => setTimeout(resolve, 120));
 
 const savedStatus = window.document.querySelector(".saved");
+assert.equal(savedStatus.getAttribute("role"), null);
+assert.equal(savedStatus.getAttribute("aria-live"), null);
+assert.equal(savedStatus.getAttribute("aria-hidden"), "true", "a visually hidden save toast should not announce stale text");
+savedStatus.classList.add("show");
+savedStatus.append(window.document.createElement("button"));
+await new Promise((resolve) => setTimeout(resolve, 10));
 assert.equal(savedStatus.getAttribute("role"), "status");
 assert.equal(savedStatus.getAttribute("aria-live"), "polite");
-assert.equal(savedStatus.getAttribute("aria-hidden"), "true", "a visually hidden save toast should not announce stale text");
+assert.equal(savedStatus.getAttribute("aria-hidden"), "false", "a visible save toast should announce the fresh result");
 assert.equal(privateState?.date, todayKey);
 assert.equal(privateState?.recorded, true, "today's private record state should be mirrored without uploading the record");
 
