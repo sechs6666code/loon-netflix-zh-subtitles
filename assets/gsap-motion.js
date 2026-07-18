@@ -24,6 +24,7 @@
   const scrollDecorationTweens = new WeakMap();
   const activeCheckinTimelines = new Set();
   const activeLeaderboardRaceTimelines = new Set();
+  const leaderboardRaceSafetyTimers = new Set();
   const activeMilestoneTimelines = new Set();
   const activePodiumTimelines = new Set();
   const activeCalendarTimelines = new Set();
@@ -1070,13 +1071,20 @@
     }
 
     let timeline = null;
+    let safetyTimer = 0;
+    let finished = false;
     const finish = () => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(safetyTimer);
+      leaderboardRaceSafetyTimers.delete(safetyTimer);
       activeLeaderboardRaceTimelines.delete(timeline);
+      flipAnimation?.progress?.(1);
       payload.ghost?.remove?.();
       raceFx.remove();
       list.classList.remove("is-gsap-flipping");
       list.dataset.gsapRace = "entered";
-      gsap.set([list, ...summary, selectedTab].filter(Boolean), {
+      gsap.set([list, ...targets, ...summary, selectedTab].filter(Boolean), {
         clearProps: "transform,opacity,visibility,transformOrigin",
       });
       window.setTimeout(() => scanShowcaseEffects(list), 0);
@@ -1161,6 +1169,11 @@
     }
     timeline.to(raceFx, { autoAlpha: 0, duration: 0.2, ease: "power2.in" }, 0.68);
     timeline.flipAnimation = flipAnimation;
+    safetyTimer = window.setTimeout(() => {
+      timeline?.progress?.(1);
+      if (!finished) finish();
+    }, 1600);
+    leaderboardRaceSafetyTimers.add(safetyTimer);
     return timeline;
   }
 
@@ -1998,6 +2011,8 @@
     document.querySelectorAll(".gsap-checkin-impact").forEach((element) => element.remove());
     activeLeaderboardRaceTimelines.forEach((timeline) => timeline.kill?.());
     activeLeaderboardRaceTimelines.clear();
+    leaderboardRaceSafetyTimers.forEach((timer) => window.clearTimeout(timer));
+    leaderboardRaceSafetyTimers.clear();
     document.querySelectorAll(".gsap-leaderboard-race-fx, .gsap-leaderboard-race-ghost").forEach((element) => element.remove());
     document.querySelectorAll(".leaderboard-list").forEach((list) => {
       list.classList.remove("is-gsap-flipping");

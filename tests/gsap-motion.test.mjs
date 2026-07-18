@@ -61,6 +61,7 @@ const finishLater = (vars = {}) => {
   }, 0);
 };
 const tween = () => ({ kill() { calls.push({ type: "kill" }); } });
+let suppressNextTimelineCompletion = false;
 const applyObjectValues = (target, vars) => {
   if (!target || target.nodeType || Array.isArray(target)) return;
   for (const [key, value] of Object.entries(vars)) {
@@ -68,6 +69,8 @@ const applyObjectValues = (target, vars) => {
   }
 };
 const timeline = (options = {}) => {
+  const suppressCompletion = suppressNextTimelineCompletion;
+  suppressNextTimelineCompletion = false;
   const instance = {
     fromTo(target, fromVars, toVars, position) {
       calls.push({ type: "timeline-fromTo", target, fromVars, toVars, position });
@@ -77,9 +80,10 @@ const timeline = (options = {}) => {
       calls.push({ type: "timeline-to", target, vars, position });
       return instance;
     },
+    progress() { return instance; },
     kill() {},
   };
-  window.setTimeout(() => options.onComplete?.(), 5);
+  if (!suppressCompletion) window.setTimeout(() => options.onComplete?.(), 5);
   return instance;
 };
 
@@ -216,12 +220,16 @@ const flipState = window.ChonglemaGsapMotion.captureLeaderboard(list);
 assert.ok(flipState?.flipState, "the race transition should retain the Flip state");
 assert.ok(window.document.querySelector(".gsap-leaderboard-race-ghost"), "the outgoing board should be captured as a visual ghost");
 list.innerHTML = '<article data-flip-id="profile-a">A2</article><article data-flip-id="profile-b">B</article>';
+const originalSetTimeout = window.setTimeout.bind(window);
+window.setTimeout = (callback, delay, ...args) => originalSetTimeout(callback, delay === 1600 ? 8 : delay, ...args);
+suppressNextTimelineCompletion = true;
 window.ChonglemaGsapMotion.playLeaderboardFlip(flipState, list, "rush");
 assert.ok(calls.some((call) => call.type === "flip-getState"));
 assert.ok(calls.some((call) => call.type === "flip-from"));
 assert.equal(list.dataset.gsapRace, "entering");
 assert.ok(window.document.querySelector('.gsap-leaderboard-race-fx[data-race-tone="rush"]'));
 await new Promise((resolve) => window.setTimeout(resolve, 18));
+window.setTimeout = originalSetTimeout;
 assert.equal(list.dataset.gsapRace, "entered");
 assert.equal(window.document.querySelector(".gsap-leaderboard-race-fx"), null);
 assert.equal(window.document.querySelector(".gsap-leaderboard-race-ghost"), null);
