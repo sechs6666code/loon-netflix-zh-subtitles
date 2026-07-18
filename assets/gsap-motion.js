@@ -49,6 +49,7 @@
   let cinematicIntroStarted = false;
   let cinematicIntroTimeline = null;
   let cinematicIntroElement = null;
+  let cinematicIntroSafetyTimer = 0;
 
   html.dataset.gsapIntro = reducedMotion ? "reduced" : "pending";
 
@@ -306,6 +307,8 @@
       hero?.querySelector(".subline"),
       ...Array.from(hero?.querySelectorAll(".answer") || []),
     ].filter(Boolean);
+    window.clearTimeout(cinematicIntroSafetyTimer);
+    cinematicIntroSafetyTimer = 0;
     cinematicIntroElement?.remove();
     cinematicIntroElement = null;
     cinematicIntroTimeline = null;
@@ -450,6 +453,15 @@
       }, 0.82)
       .to(mark, { y: -22, z: 80, scale: 1.12, autoAlpha: 0, duration: 0.42, ease: "power3.in" }, 0.76)
       .to(overlay, { autoAlpha: 0, duration: 0.38, ease: "power2.in" }, 1.18);
+    window.clearTimeout(cinematicIntroSafetyTimer);
+    cinematicIntroSafetyTimer = window.setTimeout(() => {
+      if (html.dataset.gsapIntro !== "playing") return;
+      cinematicIntroTimeline?.progress?.(1);
+      if (html.dataset.gsapIntro === "playing") {
+        delete hero.dataset.gsapCinematic;
+        finishCinematicIntro();
+      }
+    }, 2600);
     return timeline;
   }
 
