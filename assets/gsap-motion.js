@@ -848,7 +848,9 @@
     control.rotationYTo(control.pointerX * 8.4 * hoverStrength + velocity * direction * 0.8);
     control.rotationZTo(velocity * direction * 0.72);
     control.yTo(velocity * -3.4);
-    control.scaleTo(1 + hoverStrength * 0.012 + Math.abs(velocity) * 0.007);
+    const scale = 1 + hoverStrength * 0.012 + Math.abs(velocity) * 0.007;
+    control.scaleXTo(scale);
+    control.scaleYTo(scale);
     control.glareXTo(control.pointerX * 52);
     control.glareYTo(control.pointerY * 42);
     control.glareOpacityTo(hoverStrength ? 0.84 : Math.abs(velocity) * 0.28);
@@ -886,9 +888,10 @@
       rect: null,
       rotationXTo: makeQuickTo(element, "rotationX", { duration: 0.48, ease: "power3.out" }),
       rotationYTo: makeQuickTo(element, "rotationY", { duration: 0.48, ease: "power3.out" }),
-      rotationZTo: makeQuickTo(element, "rotationZ", { duration: 0.42, ease: "power3.out" }),
+      rotationZTo: makeQuickTo(element, "rotation", { duration: 0.42, ease: "power3.out" }),
       yTo: makeQuickTo(element, "y", { duration: 0.42, ease: "power3.out" }),
-      scaleTo: makeQuickTo(element, "scale", { duration: 0.48, ease: "power3.out" }),
+      scaleXTo: makeQuickTo(element, "scaleX", { duration: 0.48, ease: "power3.out" }),
+      scaleYTo: makeQuickTo(element, "scaleY", { duration: 0.48, ease: "power3.out" }),
       glareXTo: makeQuickTo(glare, "xPercent", { duration: 0.28, ease: "power2.out" }),
       glareYTo: makeQuickTo(glare, "yPercent", { duration: 0.28, ease: "power2.out" }),
       glareOpacityTo: makeQuickTo(glare, "opacity", { duration: 0.24, ease: "power2.out" }),
@@ -938,7 +941,9 @@
     velocityFieldControls.rotationTo(normalized * 5.5);
     velocityFieldControls.scaleYTo(1 + intensity * 0.26);
     velocityFieldControls.glowOpacityTo(intensity * 0.72);
-    velocityFieldControls.glowScaleTo(0.82 + intensity * 0.72);
+    const glowScale = 0.82 + intensity * 0.72;
+    velocityFieldControls.glowScaleXTo(glowScale);
+    velocityFieldControls.glowScaleYTo(glowScale);
     velocityFieldControls.lineXTo.forEach((setter, index) => {
       setter(normalized * (34 + index * 18));
     });
@@ -965,7 +970,8 @@
       rotationTo: makeQuickTo(field, "rotation", { duration: 0.36, ease: "power3.out" }),
       scaleYTo: makeQuickTo(field, "scaleY", { duration: 0.36, ease: "power3.out" }),
       glowOpacityTo: makeQuickTo(glow, "opacity", { duration: 0.28, ease: "power2.out" }),
-      glowScaleTo: makeQuickTo(glow, "scale", { duration: 0.36, ease: "power3.out" }),
+      glowScaleXTo: makeQuickTo(glow, "scaleX", { duration: 0.36, ease: "power3.out" }),
+      glowScaleYTo: makeQuickTo(glow, "scaleY", { duration: 0.36, ease: "power3.out" }),
       lineXTo: lines.map((line) => makeQuickTo(line, "xPercent", { duration: 0.38, ease: "power3.out" })),
     };
     if (typeof ScrollTrigger?.create === "function") {
@@ -988,7 +994,8 @@
         velocityFieldControls.rotationTo,
         velocityFieldControls.scaleYTo,
         velocityFieldControls.glowOpacityTo,
-        velocityFieldControls.glowScaleTo,
+        velocityFieldControls.glowScaleXTo,
+        velocityFieldControls.glowScaleYTo,
         ...velocityFieldControls.lineXTo,
       ].forEach((setter) => setter?.tween?.kill?.());
     }
@@ -1008,7 +1015,8 @@
         control.rotationYTo,
         control.rotationZTo,
         control.yTo,
-        control.scaleTo,
+        control.scaleXTo,
+        control.scaleYTo,
         control.glareXTo,
         control.glareYTo,
         control.glareOpacityTo,

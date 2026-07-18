@@ -183,6 +183,9 @@ assert.ok(window.document.querySelector(".history > .gsap-scroll-orb"), "showcas
 assert.ok(window.document.querySelector(".gsap-velocity-field"), "scroll velocity should mount an atmospheric field");
 assert.ok(window.document.querySelector(".history > .gsap-holo-surface"), "showcase cards should receive holographic glass");
 assert.ok(calls.some((call) => call.type === "scroll-create" && call.vars.id === "scroll-velocity-field"));
+assert.ok(calls.some((call) => call.type === "quickTo" && call.property === "scaleX"));
+assert.ok(calls.some((call) => call.type === "quickTo" && call.property === "scaleY"));
+assert.ok(calls.every((call) => call.type !== "quickTo" || !["scale", "rotationZ"].includes(call.property)), "quickTo should avoid composite transform aliases that emit reset warnings");
 
 answer.click();
 await new Promise((resolve) => window.setTimeout(resolve, 80));

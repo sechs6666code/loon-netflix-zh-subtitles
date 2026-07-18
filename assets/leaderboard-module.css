@@ -1109,6 +1109,17 @@
   transform-style: preserve-3d;
 }
 
+.leaderboard-podium-scene .leaderboard-podium[data-podium-count="1"] {
+  grid-template-columns: minmax(138px, 220px);
+  justify-content: center;
+}
+
+.leaderboard-podium-scene .leaderboard-podium[data-podium-count="2"] {
+  width: min(100%, 450px);
+  margin-inline: auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .leaderboard-podium-scene .leaderboard-podium-card {
   --podium-metal: #8da19a;
   --podium-metal-rgb: 141, 161, 154;

@@ -142,6 +142,7 @@ assert.match(overlay.textContent, /#1/);
 assert.match(overlay.textContent, /忍者007/);
 assert.ok(overlay.querySelector(".leaderboard-podium-scene"), "the top three should render on a dedicated award stage");
 assert.equal(overlay.querySelectorAll(".leaderboard-podium-card").length, 3);
+assert.equal(overlay.querySelector(".leaderboard-podium").dataset.podiumCount, "3");
 assert.ok(overlay.querySelector(".leaderboard-podium-horizon"));
 assert.match(overlay.querySelector('.leaderboard-podium-card[data-podium-rank="1"]').textContent, /冠军/);
 assert.ok(overlay.querySelector('.leaderboard-podium-card[data-podium-rank="1"] .leaderboard-podium-crown'));

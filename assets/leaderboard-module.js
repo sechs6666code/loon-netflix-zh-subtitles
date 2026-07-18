@@ -833,7 +833,7 @@ import {
     }).join("");
     list.innerHTML = `<div class="leaderboard-podium-scene" data-podium-tone="${state.tab}">
       <i class="leaderboard-podium-horizon" aria-hidden="true"></i>
-      <div class="leaderboard-podium">${podium}</div>
+      <div class="leaderboard-podium" data-podium-count="${Math.min(entries.length, 3)}">${podium}</div>
     </div>${rows ? `<div class="leaderboard-rows">${rows}</div>` : ""}`;
     window.ChonglemaGsapMotion?.scanShowcaseEffects?.();
   }
