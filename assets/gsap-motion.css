@@ -1,0 +1,61 @@
+/* GSAP owns coordinated state motion; CSS remains the no-script fallback. */
+.gsap-motion-ready .answer.just-saved,
+.gsap-motion-ready .answer.just-saved::after,
+.gsap-motion-ready .month-sheet,
+.gsap-motion-ready .month-panel,
+.gsap-motion-ready .history-sheet,
+.gsap-motion-ready .history-panel {
+  animation: none !important;
+}
+
+.gsap-motion-ready .ring-value,
+.gsap-motion-ready .leaderboard-overlay,
+.gsap-motion-ready .leaderboard-panel,
+.gsap-motion-ready .pwa-reminder-overlay,
+.gsap-motion-ready .pwa-reminder-panel,
+.gsap-motion-ready .recovery-editor,
+.gsap-motion-ready .recovery-editor-panel {
+  transition: none !important;
+}
+
+.gsap-checkin-wash {
+  position: absolute !important;
+  z-index: 0 !important;
+  inset: -56%;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.answer.no .gsap-checkin-wash {
+  background: radial-gradient(circle, rgba(49, 198, 139, .3), transparent 63%);
+}
+
+.answer.yes .gsap-checkin-wash {
+  background: radial-gradient(circle, rgba(237, 116, 104, .26), transparent 63%);
+}
+
+[data-gsap-animating="checkin"],
+[data-gsap-animating="checkin"] .answer-icon,
+[data-gsap-animating="number"],
+[data-gsap-animating="ring"],
+[data-gsap-sheet="opening"] > :is(.leaderboard-panel, .pwa-reminder-panel, .recovery-editor-panel),
+.is-gsap-flipping [data-flip-id] {
+  will-change: transform, opacity;
+}
+
+.is-gsap-flipping {
+  isolation: isolate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gsap-checkin-wash {
+    display: none !important;
+  }
+
+  [data-gsap-animating],
+  [data-gsap-sheet],
+  .is-gsap-flipping [data-flip-id] {
+    will-change: auto;
+  }
+}

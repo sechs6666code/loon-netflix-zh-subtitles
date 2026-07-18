@@ -19,8 +19,6 @@
   const clamp = (value, minimum, maximum) =>
     Math.min(maximum, Math.max(minimum, value));
 
-  const easeOutCubic = (progress) => 1 - Math.pow(1 - progress, 3);
-
   const localDateKey = (value = new Date()) => {
     const date = value instanceof Date ? value : new Date(value);
     const year = date.getFullYear();
@@ -73,22 +71,20 @@
     element.classList.remove("motion-number-changing");
     void element.offsetWidth;
     element.classList.add("motion-number-changing");
-
-    const started = performance.now();
-    const tick = (now) => {
-      const progress = Math.min(1, (now - started) / duration);
-      textNode.data = String(Math.round(from + (to - from) * easeOutCubic(progress)));
-      if (progress < 1) {
-        requestAnimationFrame(tick);
-      } else {
-        textNode.data = String(to);
-        numberState.set(element, to);
-        numberLocks.delete(element);
-        window.setTimeout(() => element.classList.remove("motion-number-changing"), 80);
-      }
+    const finish = () => {
+      textNode.data = String(to);
+      numberState.set(element, to);
+      numberLocks.delete(element);
+      window.setTimeout(() => element.classList.remove("motion-number-changing"), 80);
     };
-
-    requestAnimationFrame(tick);
+    const tween = window.ChonglemaGsapMotion?.animateNumber(
+      element,
+      from,
+      to,
+      duration / 1000,
+      finish,
+    );
+    if (!tween) finish();
   };
 
   const scanNumbers = () => {
@@ -229,45 +225,46 @@
     if (!chart) return;
 
     const previousAnimation = pieAnimation.get(chart);
-    if (previousAnimation) cancelAnimationFrame(previousAnimation.frame);
+    previousAnimation?.kill?.();
 
     if (reducedMotion.matches) {
       paintPie(chart, toData, 100);
       return;
     }
 
-    const token = {};
-    const duration = entrance ? 760 : 520;
-    const started = performance.now();
+    const gsap = window.gsap;
+    if (!gsap) {
+      paintPie(chart, toData, 100);
+      return;
+    }
+
+    const duration = entrance ? 0.76 : 0.52;
     const fromPercent = percentages(fromData);
     const toPercent = percentages(toData);
+    const progress = { value: 0 };
     side.classList.add("pie-data-changing");
 
-    const tick = (now) => {
-      if (pieAnimation.get(chart)?.token !== token) return;
-      const progress = Math.min(1, (now - started) / duration);
-      const eased = easeOutCubic(progress);
-
-      if (entrance) {
-        paintPie(chart, toData, eased * 100);
-      } else {
-        const noPercent = fromPercent.no + (toPercent.no - fromPercent.no) * eased;
-        const synthetic = { no: noPercent, yes: 100 - noPercent };
-        paintPie(chart, synthetic, 100);
-      }
-
-      if (progress < 1) {
-        const frame = requestAnimationFrame(tick);
-        pieAnimation.set(chart, { token, frame });
-      } else {
+    const tween = gsap.to(progress, {
+      value: 1,
+      duration,
+      ease: "power2.out",
+      overwrite: "auto",
+      onUpdate: () => {
+        if (entrance) {
+          paintPie(chart, toData, progress.value * 100);
+        } else {
+          const noPercent = fromPercent.no + (toPercent.no - fromPercent.no) * progress.value;
+          const synthetic = { no: noPercent, yes: 100 - noPercent };
+          paintPie(chart, synthetic, 100);
+        }
+      },
+      onComplete: () => {
         paintPie(chart, toData, 100);
         pieAnimation.delete(chart);
         window.setTimeout(() => side.classList.remove("pie-data-changing"), 80);
-      }
-    };
-
-    const frame = requestAnimationFrame(tick);
-    pieAnimation.set(chart, { token, frame });
+      },
+    });
+    pieAnimation.set(chart, tween);
   };
 
   const applyPieHealth = (side, data) => {

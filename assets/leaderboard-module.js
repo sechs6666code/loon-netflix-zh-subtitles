@@ -355,9 +355,14 @@ import {
     element.querySelector(".leaderboard-refresh")?.addEventListener("click", () => loadBoards());
     element.querySelectorAll("[data-tab]").forEach((button) => {
       button.addEventListener("click", () => {
-        state.tab = button.dataset.tab === "rush" ? "rush" : "ninja";
+        const nextTab = button.dataset.tab === "rush" ? "rush" : "ninja";
+        if (nextTab === state.tab) return;
+        const list = overlay?.querySelector(".leaderboard-list");
+        const flipState = window.ChonglemaGsapMotion?.captureLeaderboard(list);
+        state.tab = nextTab;
         renderTabs();
         renderBoard();
+        window.ChonglemaGsapMotion?.playLeaderboardFlip(flipState, list);
         navigator.vibrate?.(5);
       });
     });
@@ -801,14 +806,16 @@ import {
     const podium = entries.slice(0, 3).map((entry) => {
       const mine = profileKey(entry.publicId) === profileKey(state.profile.publicId);
       const mark = Number(entry.rank) === 1 ? "♛" : Number(entry.rank) === 2 ? "Ⅱ" : "Ⅲ";
-      return `<article class="leaderboard-podium-card rank-${Number(entry.rank)}${mine ? " is-mine" : ""}">
+      const flipId = escapeHtml(`profile-${profileKey(entry.publicId)}`);
+      return `<article class="leaderboard-podium-card rank-${Number(entry.rank)}${mine ? " is-mine" : ""}" data-flip-id="${flipId}">
         <em>${mark}</em><span>${escapeHtml(Array.from(String(entry.publicId))[0]?.toUpperCase() || "?")}</span>
         <b>${escapeHtml(entry.publicId)}</b><strong>${Number(entry.days) || 0}<small> 天</small></strong>
       </article>`;
     }).join("");
     const rows = entries.slice(3).map((entry) => {
       const mine = profileKey(entry.publicId) === profileKey(state.profile.publicId);
-      return `<div class="leaderboard-row${mine ? " is-mine" : ""}">
+      const flipId = escapeHtml(`profile-${profileKey(entry.publicId)}`);
+      return `<div class="leaderboard-row${mine ? " is-mine" : ""}" data-flip-id="${flipId}">
         <span class="leaderboard-rank-number">${Number(entry.rank) || 0}</span>
         <span class="leaderboard-avatar">${escapeHtml(Array.from(String(entry.publicId))[0]?.toUpperCase() || "?")}</span>
         <b>${escapeHtml(entry.publicId)}${mine ? "<em>我</em>" : ""}</b>
