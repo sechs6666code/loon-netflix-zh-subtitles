@@ -23,7 +23,9 @@ assert.match(serviceWorkerSource, /gsap-motion\.js/);
 
 const dom = new JSDOM(`<!doctype html><html><body>
   <div id="root">
+    <header class="topbar"></header>
     <section class="hero">
+      <p class="date">7月18日星期六</p>
       <h1>今天，冲了吗？</h1>
       <p class="subline">如实记录就好。</p>
       <div class="check-actions">
@@ -159,6 +161,11 @@ window.matchMedia = (query) => ({
   addEventListener() {},
   removeEventListener() {},
 });
+const vibrationCalls = [];
+window.navigator.vibrate = (pattern) => {
+  vibrationCalls.push(pattern);
+  return true;
+};
 
 const answer = window.document.querySelector(".answer");
 answer.addEventListener("click", () => {
@@ -170,6 +177,9 @@ answer.addEventListener("click", () => {
 window.eval(source);
 await new Promise((resolve) => window.setTimeout(resolve, 140));
 assert.equal(window.document.documentElement.dataset.gsapMotion, "full");
+assert.equal(window.document.documentElement.dataset.gsapIntro, "complete");
+assert.equal(window.document.querySelector(".gsap-cinematic-intro"), null, "the cinematic overlay should clean itself up");
+assert.ok(calls.some((call) => call.type === "timeline-fromTo" && call.target === window.document.querySelector(".hero h1")));
 assert.ok(calls.some((call) => call.type === "register" && call.plugin === window.Flip));
 assert.ok(calls.some((call) => call.type === "register" && call.plugin === window.ScrollTrigger));
 assert.ok(calls.some((call) => call.type === "matchMedia" && "reduceMotion" in call.conditions));
@@ -191,6 +201,9 @@ answer.click();
 await new Promise((resolve) => window.setTimeout(resolve, 80));
 assert.ok(calls.some((call) => call.type === "timeline-fromTo" && call.target === answer));
 assert.equal(window.document.querySelectorAll(".gsap-checkin-wash").length, 0, "the check-in wash should clean itself up");
+assert.equal(window.document.querySelectorAll(".gsap-checkin-impact").length, 0, "the full-screen impact should clean itself up");
+assert.ok(calls.some((call) => call.type === "timeline-fromTo" && call.target?.classList?.contains("gsap-checkin-impact-flash")));
+assert.deepEqual(Array.from(vibrationCalls.at(-1)), [16, 22, 40]);
 
 const leaderboardNumber = window.document.querySelector("[data-leaderboard-inline-ninja]");
 leaderboardNumber.firstChild.data = "7";
@@ -200,10 +213,18 @@ assert.ok(calls.some((call) => call.type === "to" && call.target?.current === 7)
 
 const list = window.document.querySelector(".leaderboard-list");
 const flipState = window.ChonglemaGsapMotion.captureLeaderboard(list);
+assert.ok(flipState?.flipState, "the race transition should retain the Flip state");
+assert.ok(window.document.querySelector(".gsap-leaderboard-race-ghost"), "the outgoing board should be captured as a visual ghost");
 list.innerHTML = '<article data-flip-id="profile-a">A2</article><article data-flip-id="profile-b">B</article>';
-window.ChonglemaGsapMotion.playLeaderboardFlip(flipState, list);
+window.ChonglemaGsapMotion.playLeaderboardFlip(flipState, list, "rush");
 assert.ok(calls.some((call) => call.type === "flip-getState"));
 assert.ok(calls.some((call) => call.type === "flip-from"));
+assert.equal(list.dataset.gsapRace, "entering");
+assert.ok(window.document.querySelector('.gsap-leaderboard-race-fx[data-race-tone="rush"]'));
+await new Promise((resolve) => window.setTimeout(resolve, 18));
+assert.equal(list.dataset.gsapRace, "entered");
+assert.equal(window.document.querySelector(".gsap-leaderboard-race-fx"), null);
+assert.equal(window.document.querySelector(".gsap-leaderboard-race-ghost"), null);
 
 const overlay = window.document.querySelector(".leaderboard-overlay");
 overlay.hidden = false;

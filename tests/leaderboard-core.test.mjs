@@ -52,7 +52,8 @@ const recovered = parseRecoveryCode(recoveryCode);
 assert.equal(recovered.valid, true);
 assert.deepEqual(recovered.profile, profile);
 assert.deepEqual(recovered.records, records);
-assert.equal(parseRecoveryCode(`${recoveryCode.slice(0, -1)}X`).valid, false, "tampered recovery codes should fail validation");
+const tamperedSuffix = recoveryCode.endsWith("X") ? "Y" : "X";
+assert.equal(parseRecoveryCode(`${recoveryCode.slice(0, -1)}${tamperedSuffix}`).valid, false, "tampered recovery codes should fail validation");
 
 assert.equal(milestoneState(2, "ninja").earned.length, 0);
 assert.equal(milestoneState(7, "ninja").currentLabel, "一周忍者");
