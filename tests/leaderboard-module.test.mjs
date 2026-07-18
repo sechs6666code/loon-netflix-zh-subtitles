@@ -56,10 +56,18 @@ const mockFetch = async (url, options = {}) => {
     return Response.json({ deleted: true });
   }
   const ninja = published
-    ? [{ publicId: savedPayload.publicId, days: savedPayload.ninjaDays, rank: 1, updatedAt: new Date().toISOString() }]
+    ? [
+        { publicId: savedPayload.publicId, days: savedPayload.ninjaDays, rank: 1, updatedAt: new Date().toISOString() },
+        { publicId: "稳住一号", days: Math.max(0, savedPayload.ninjaDays - 1), rank: 2, updatedAt: new Date().toISOString() },
+        { publicId: "夜行者", days: Math.max(0, savedPayload.ninjaDays - 2), rank: 3, updatedAt: new Date().toISOString() },
+      ]
     : [];
   const rush = published
-    ? [{ publicId: savedPayload.publicId, days: savedPayload.rushDays, rank: 1, updatedAt: new Date().toISOString() }]
+    ? [
+        { publicId: savedPayload.publicId, days: savedPayload.rushDays, rank: 1, updatedAt: new Date().toISOString() },
+        { publicId: "火焰二号", days: Math.max(0, savedPayload.rushDays - 1), rank: 2, updatedAt: new Date().toISOString() },
+        { publicId: "赤色闪电", days: Math.max(0, savedPayload.rushDays - 2), rank: 3, updatedAt: new Date().toISOString() },
+      ]
     : [];
   return Response.json({ ninja, rush, generatedAt: new Date().toISOString() });
 };
@@ -132,6 +140,12 @@ assert.equal(typeof savedPayload.ownerToken, "string");
 assert.ok(savedPayload.ownerToken.length >= 24);
 assert.match(overlay.textContent, /#1/);
 assert.match(overlay.textContent, /忍者007/);
+assert.ok(overlay.querySelector(".leaderboard-podium-scene"), "the top three should render on a dedicated award stage");
+assert.equal(overlay.querySelectorAll(".leaderboard-podium-card").length, 3);
+assert.ok(overlay.querySelector(".leaderboard-podium-horizon"));
+assert.match(overlay.querySelector('.leaderboard-podium-card[data-podium-rank="1"]').textContent, /冠军/);
+assert.ok(overlay.querySelector('.leaderboard-podium-card[data-podium-rank="1"] .leaderboard-podium-crown'));
+assert.ok(overlay.querySelector('.leaderboard-podium-card[data-podium-rank="1"] .leaderboard-podium-plinth'));
 overlay.querySelector('[data-tab="rush"]').click();
 assert.match(overlay.querySelector("[data-leaderboard-board-label]").textContent, /历史最长连冲/);
 assert.match(overlay.querySelector("[data-leaderboard-my-rank]").textContent, /#1/);

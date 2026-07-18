@@ -23,6 +23,11 @@
   const scrollDepthTweens = new Set();
   const scrollDecorationTweens = new WeakMap();
   const activeMilestoneTimelines = new Set();
+  const activePodiumTimelines = new Set();
+  const activeCalendarTimelines = new Set();
+  const podiumScenesSeen = new WeakSet();
+  const calendarMonthsSeen = new WeakSet();
+  const reactiveCardControls = new Map();
   const activeNumberElements = new Set();
   const activeRings = new Set();
   let reducedMotion = reducedMotionQuery.matches;
@@ -31,6 +36,14 @@
   let pendingScrollRefresh = 0;
   let scrollProgressElement = null;
   let scrollRevealIndex = 0;
+  let velocityFieldElement = null;
+  let velocityScrollTrigger = null;
+  let velocityResetTimer = 0;
+  let velocityFieldControls = null;
+  let calendarGesture = null;
+  let calendarGhost = null;
+  let calendarCaptureStamp = 0;
+  let calendarCaptureDirection = 0;
 
   const milestoneDays = [3, 7, 14, 30, 60, 90, 180, 365];
   const scrollProgressTweens = new Set();
@@ -47,6 +60,12 @@
   const scrollShowcaseSelector = [
     ".leaderboard-inline-entry",
     ".stats > .streak-card",
+    ".history",
+  ].join(", ");
+
+  const reactiveCardSelector = [
+    ".leaderboard-inline-entry",
+    ".stats > .stat-card",
     ".history",
   ].join(", ");
 
@@ -84,6 +103,18 @@
 
   const getTextNode = (element) =>
     Array.from(element?.childNodes || []).find((node) => node.nodeType === Node.TEXT_NODE);
+
+  const clamp = (minimum, maximum, value) =>
+    Math.min(maximum, Math.max(minimum, Number(value) || 0));
+
+  const makeQuickTo = (target, property, options) => {
+    if (typeof gsap.quickTo === "function") return gsap.quickTo(target, property, options);
+    return (value) => gsap.to(target, {
+      [property]: value,
+      ...options,
+      overwrite: "auto",
+    });
+  };
 
   const parseElementNumber = (element) => {
     const textNode = getTextNode(element);
@@ -683,6 +714,519 @@
     return animation;
   }
 
+  function animatePodiumScene(scene) {
+    if (!scene || reducedMotion || podiumScenesSeen.has(scene)) return null;
+    const overlay = scene.closest(".leaderboard-overlay");
+    if (!overlay?.classList.contains("is-open") || overlay.hidden || scene.closest(".is-gsap-flipping")) {
+      return null;
+    }
+
+    const cards = [
+      scene.querySelector('.leaderboard-podium-card[data-podium-rank="2"]'),
+      scene.querySelector('.leaderboard-podium-card[data-podium-rank="3"]'),
+      scene.querySelector('.leaderboard-podium-card[data-podium-rank="1"]'),
+    ].filter(Boolean);
+    if (!cards.length) return null;
+
+    podiumScenesSeen.add(scene);
+    scene.dataset.gsapPodium = "entering";
+    const horizon = scene.querySelector(".leaderboard-podium-horizon");
+    const crowns = cards.map((card) => card.querySelector(".leaderboard-podium-crown")).filter(Boolean);
+    const avatars = cards.map((card) => card.querySelector(".leaderboard-podium-avatar")).filter(Boolean);
+    const beams = cards.map((card) => card.querySelector(".leaderboard-podium-beam")).filter(Boolean);
+    const plinths = cards.map((card) => card.querySelector(".leaderboard-podium-plinth")).filter(Boolean);
+    let timeline = null;
+    const finish = () => {
+      scene.dataset.gsapPodium = "entered";
+      gsap.set([horizon, ...cards, ...crowns, ...avatars, ...beams, ...plinths].filter(Boolean), {
+        clearProps: "transform,opacity,visibility,transformOrigin",
+      });
+      if (timeline) activePodiumTimelines.delete(timeline);
+    };
+
+    timeline = gsap.timeline({ onComplete: finish, onInterrupt: finish });
+    activePodiumTimelines.add(timeline);
+    if (horizon) {
+      timeline.fromTo(horizon, {
+        scale: 0.35,
+        rotationX: 78,
+        autoAlpha: 0,
+      }, {
+        scale: 1,
+        rotationX: 67,
+        autoAlpha: 1,
+        duration: 0.9,
+        ease: "expo.out",
+      }, 0);
+    }
+    timeline.fromTo(cards, {
+      y: 96,
+      z: -230,
+      scale: 0.68,
+      rotationX: 28,
+      rotationY: (index) => (index === cards.length - 1 ? 0 : index ? 15 : -15),
+      autoAlpha: 0,
+      transformOrigin: "50% 100%",
+    }, {
+      y: 0,
+      z: 0,
+      scale: 1,
+      rotationX: 0,
+      rotationY: 0,
+      autoAlpha: 1,
+      duration: 1.08,
+      stagger: 0.12,
+      ease: "back.out(1.55)",
+    }, 0.08);
+    timeline.fromTo(plinths, {
+      y: 28,
+      scaleX: 0.45,
+      autoAlpha: 0,
+    }, {
+      y: 0,
+      scaleX: 1,
+      autoAlpha: 1,
+      duration: 0.62,
+      stagger: 0.1,
+      ease: "power4.out",
+    }, 0.34);
+    timeline.fromTo(avatars, {
+      z: -80,
+      scale: 0.35,
+      rotation: -18,
+      autoAlpha: 0,
+    }, {
+      z: 24,
+      scale: 1,
+      rotation: 0,
+      autoAlpha: 1,
+      duration: 0.68,
+      stagger: 0.1,
+      ease: "back.out(2.1)",
+    }, 0.46);
+    timeline.fromTo(crowns, {
+      y: -42,
+      z: 90,
+      scale: 1.8,
+      rotation: -22,
+      autoAlpha: 0,
+    }, {
+      y: 0,
+      z: 32,
+      scale: 1,
+      rotation: 0,
+      autoAlpha: 1,
+      duration: 0.72,
+      stagger: 0.1,
+      ease: "elastic.out(1, 0.45)",
+    }, 0.7);
+    timeline.fromTo(beams, { scaleY: 0.15, autoAlpha: 0 }, {
+      scaleY: 1,
+      autoAlpha: 0.78,
+      duration: 0.72,
+      stagger: 0.08,
+      ease: "power2.out",
+    }, 0.68);
+    return timeline;
+  }
+
+  function scanLeaderboardPodiums(scope = document) {
+    if (reducedMotion) return;
+    scope.querySelectorAll?.(".leaderboard-podium-scene").forEach(animatePodiumScene);
+  }
+
+  function updateReactiveCard(control) {
+    const { element } = control;
+    if (!element.isConnected || reducedMotion) return;
+    const scrollState = element.dataset.gsapScroll;
+    if (scrollState === "waiting" || scrollState === "entering" || element.closest(".is-gsap-flipping")) return;
+
+    const velocity = control.velocity;
+    const direction = element.dataset.gsapScrollDirection === "right" ? 1 : -1;
+    const hoverStrength = control.pointerActive ? 1 : 0;
+    control.rotationXTo(control.pointerY * -7.2 * hoverStrength + velocity * -2.6);
+    control.rotationYTo(control.pointerX * 8.4 * hoverStrength + velocity * direction * 0.8);
+    control.rotationZTo(velocity * direction * 0.72);
+    control.yTo(velocity * -3.4);
+    control.scaleTo(1 + hoverStrength * 0.012 + Math.abs(velocity) * 0.007);
+    control.glareXTo(control.pointerX * 52);
+    control.glareYTo(control.pointerY * 42);
+    control.glareOpacityTo(hoverStrength ? 0.84 : Math.abs(velocity) * 0.28);
+    control.spectrumOpacityTo(hoverStrength ? 0.56 : Math.abs(velocity) * 0.22);
+  }
+
+  function resetReactivePointer(control) {
+    control.pointerActive = false;
+    control.pointerX = 0;
+    control.pointerY = 0;
+    control.rect = null;
+    updateReactiveCard(control);
+  }
+
+  function ensureHolographicCard(element) {
+    if (!element || reactiveCardControls.has(element)) return;
+    let surface = element.querySelector(":scope > .gsap-holo-surface");
+    if (!surface) {
+      surface = document.createElement("span");
+      surface.className = "gsap-holo-surface";
+      surface.setAttribute("aria-hidden", "true");
+      surface.innerHTML = '<i class="gsap-holo-glare"></i><b class="gsap-holo-spectrum"></b><em class="gsap-holo-grid"></em>';
+      element.append(surface);
+    }
+    element.dataset.gsapHolo = "true";
+    const glare = surface.querySelector(".gsap-holo-glare");
+    const spectrum = surface.querySelector(".gsap-holo-spectrum");
+    const control = {
+      element,
+      surface,
+      pointerActive: false,
+      pointerX: 0,
+      pointerY: 0,
+      velocity: 0,
+      rect: null,
+      rotationXTo: makeQuickTo(element, "rotationX", { duration: 0.48, ease: "power3.out" }),
+      rotationYTo: makeQuickTo(element, "rotationY", { duration: 0.48, ease: "power3.out" }),
+      rotationZTo: makeQuickTo(element, "rotationZ", { duration: 0.42, ease: "power3.out" }),
+      yTo: makeQuickTo(element, "y", { duration: 0.42, ease: "power3.out" }),
+      scaleTo: makeQuickTo(element, "scale", { duration: 0.48, ease: "power3.out" }),
+      glareXTo: makeQuickTo(glare, "xPercent", { duration: 0.28, ease: "power2.out" }),
+      glareYTo: makeQuickTo(glare, "yPercent", { duration: 0.28, ease: "power2.out" }),
+      glareOpacityTo: makeQuickTo(glare, "opacity", { duration: 0.24, ease: "power2.out" }),
+      spectrumOpacityTo: makeQuickTo(spectrum, "opacity", { duration: 0.32, ease: "power2.out" }),
+    };
+
+    const move = (event) => {
+      if (event.pointerType === "touch" && !control.pointerActive) return;
+      if (!control.rect) control.rect = element.getBoundingClientRect();
+      const width = Math.max(1, control.rect.width);
+      const height = Math.max(1, control.rect.height);
+      control.pointerActive = true;
+      control.pointerX = clamp(-1, 1, ((event.clientX - control.rect.left) / width - 0.5) * 2);
+      control.pointerY = clamp(-1, 1, ((event.clientY - control.rect.top) / height - 0.5) * 2);
+      updateReactiveCard(control);
+    };
+    const enter = (event) => {
+      if (event.pointerType === "touch") return;
+      control.rect = element.getBoundingClientRect();
+      move(event);
+    };
+    const down = (event) => {
+      control.rect = element.getBoundingClientRect();
+      move(event);
+    };
+    const leave = () => resetReactivePointer(control);
+    control.listeners = { move, enter, down, leave };
+    element.addEventListener("pointerenter", enter, { passive: true });
+    element.addEventListener("pointermove", move, { passive: true });
+    element.addEventListener("pointerdown", down, { passive: true });
+    element.addEventListener("pointerleave", leave, { passive: true });
+    element.addEventListener("pointerup", leave, { passive: true });
+    element.addEventListener("pointercancel", leave, { passive: true });
+    reactiveCardControls.set(element, control);
+  }
+
+  function scanReactiveCards(scope = document) {
+    if (reducedMotion) return;
+    scope.querySelectorAll?.(reactiveCardSelector).forEach(ensureHolographicCard);
+  }
+
+  function applyScrollVelocity(rawVelocity, scheduleReset = true) {
+    if (!velocityFieldControls || reducedMotion) return;
+    const velocity = clamp(-2300, 2300, rawVelocity);
+    const normalized = velocity / 2300;
+    const intensity = Math.min(1, Math.abs(normalized) * 1.4);
+    velocityFieldControls.rotationTo(normalized * 5.5);
+    velocityFieldControls.scaleYTo(1 + intensity * 0.26);
+    velocityFieldControls.glowOpacityTo(intensity * 0.72);
+    velocityFieldControls.glowScaleTo(0.82 + intensity * 0.72);
+    velocityFieldControls.lineXTo.forEach((setter, index) => {
+      setter(normalized * (34 + index * 18));
+    });
+    reactiveCardControls.forEach((control) => {
+      control.velocity = normalized;
+      updateReactiveCard(control);
+    });
+    if (!scheduleReset) return;
+    window.clearTimeout(velocityResetTimer);
+    velocityResetTimer = window.setTimeout(() => applyScrollVelocity(0, false), 150);
+  }
+
+  function ensureVelocityField() {
+    if (reducedMotion || velocityFieldElement?.isConnected) return;
+    const field = document.createElement("span");
+    field.className = "gsap-velocity-field";
+    field.setAttribute("aria-hidden", "true");
+    field.innerHTML = "<i></i><i></i><i></i><i></i><b></b>";
+    document.body.append(field);
+    velocityFieldElement = field;
+    const lines = Array.from(field.querySelectorAll("i"));
+    const glow = field.querySelector("b");
+    velocityFieldControls = {
+      rotationTo: makeQuickTo(field, "rotation", { duration: 0.36, ease: "power3.out" }),
+      scaleYTo: makeQuickTo(field, "scaleY", { duration: 0.36, ease: "power3.out" }),
+      glowOpacityTo: makeQuickTo(glow, "opacity", { duration: 0.28, ease: "power2.out" }),
+      glowScaleTo: makeQuickTo(glow, "scale", { duration: 0.36, ease: "power3.out" }),
+      lineXTo: lines.map((line) => makeQuickTo(line, "xPercent", { duration: 0.38, ease: "power3.out" })),
+    };
+    if (typeof ScrollTrigger?.create === "function") {
+      velocityScrollTrigger = ScrollTrigger.create({
+        id: "scroll-velocity-field",
+        start: 0,
+        end: "max",
+        onUpdate: (self) => applyScrollVelocity(self.getVelocity?.() || 0),
+      });
+    }
+  }
+
+  function stopReactiveMotion() {
+    window.clearTimeout(velocityResetTimer);
+    velocityResetTimer = 0;
+    velocityScrollTrigger?.kill?.();
+    velocityScrollTrigger = null;
+    if (velocityFieldControls) {
+      [
+        velocityFieldControls.rotationTo,
+        velocityFieldControls.scaleYTo,
+        velocityFieldControls.glowOpacityTo,
+        velocityFieldControls.glowScaleTo,
+        ...velocityFieldControls.lineXTo,
+      ].forEach((setter) => setter?.tween?.kill?.());
+    }
+    velocityFieldControls = null;
+    velocityFieldElement?.remove();
+    velocityFieldElement = null;
+    reactiveCardControls.forEach((control, element) => {
+      const { move, enter, down, leave } = control.listeners;
+      element.removeEventListener("pointerenter", enter);
+      element.removeEventListener("pointermove", move);
+      element.removeEventListener("pointerdown", down);
+      element.removeEventListener("pointerleave", leave);
+      element.removeEventListener("pointerup", leave);
+      element.removeEventListener("pointercancel", leave);
+      [
+        control.rotationXTo,
+        control.rotationYTo,
+        control.rotationZTo,
+        control.yTo,
+        control.scaleTo,
+        control.glareXTo,
+        control.glareYTo,
+        control.glareOpacityTo,
+        control.spectrumOpacityTo,
+      ].forEach((setter) => setter?.tween?.kill?.());
+      gsap.set(element, { clearProps: "transform,transformOrigin" });
+      control.surface.remove();
+      delete element.dataset.gsapHolo;
+    });
+    reactiveCardControls.clear();
+  }
+
+  function captureCalendarExit(direction) {
+    const resolvedDirection = direction > 0 ? 1 : -1;
+    if (reducedMotion || !direction) return null;
+    const now = Date.now();
+    if (now - calendarCaptureStamp < 90 && calendarCaptureDirection === resolvedDirection) return calendarGhost;
+    const month = document.querySelector(".calendar-month:not(.gsap-calendar-ghost)");
+    const history = month?.closest(".history");
+    if (!month || !history) return null;
+
+    const monthRect = month.getBoundingClientRect();
+    const historyRect = history.getBoundingClientRect();
+    const ghost = month.cloneNode(true);
+    ghost.classList.remove("is-dragging", "is-snapping", "next", "prev");
+    ghost.classList.add("gsap-calendar-ghost");
+    ghost.dataset.gsapCalendarGhost = resolvedDirection > 0 ? "next" : "prev";
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.inert = true;
+    calendarGhost?.remove();
+    calendarGhost = ghost;
+    calendarCaptureStamp = now;
+    calendarCaptureDirection = resolvedDirection;
+    history.append(ghost);
+    gsap.set(ghost, {
+      position: "absolute",
+      top: monthRect.top - historyRect.top,
+      left: monthRect.left - historyRect.left,
+      width: monthRect.width,
+      height: monthRect.height,
+      margin: 0,
+      zIndex: 7,
+      transformPerspective: 980,
+      transformOrigin: resolvedDirection > 0 ? "0% 50%" : "100% 50%",
+    });
+    let timeline = null;
+    const finish = () => {
+      ghost.remove();
+      if (calendarGhost === ghost) calendarGhost = null;
+      if (timeline) activeCalendarTimelines.delete(timeline);
+    };
+    timeline = gsap.timeline({ onComplete: finish, onInterrupt: finish });
+    activeCalendarTimelines.add(timeline);
+    timeline.to(ghost, {
+      x: resolvedDirection * -Math.min(190, Math.max(110, monthRect.width * 0.38)),
+      z: 170,
+      rotationY: resolvedDirection * -42,
+      rotationZ: resolvedDirection * -3.2,
+      scale: 0.92,
+      autoAlpha: 0,
+      duration: 0.78,
+      ease: "power3.in",
+    }, 0);
+    timeline.to(ghost.querySelectorAll(".calendar-day"), {
+      x: resolvedDirection * -24,
+      y: (index) => (index % 2 ? -12 : 12),
+      rotation: (index) => (index % 2 ? -5 : 5),
+      autoAlpha: 0,
+      duration: 0.42,
+      stagger: { amount: 0.22, from: resolvedDirection > 0 ? "start" : "end" },
+      ease: "power2.in",
+    }, 0.05);
+    return ghost;
+  }
+
+  function captureCalendarNavigation(event) {
+    const button = event.target.closest?.(".month-switcher button, .month-grid > button, .floating-today");
+    if (!button || button.disabled) return;
+    if (button.matches('[aria-label="下个月"]')) captureCalendarExit(1);
+    else if (button.matches('[aria-label="上个月"]')) captureCalendarExit(-1);
+    else if (button.matches(".month-grid > button")) {
+      const current = Number.parseInt(document.querySelector(".month-current")?.textContent || "", 10);
+      const next = Number.parseInt(button.textContent || "", 10);
+      if (Number.isFinite(current) && Number.isFinite(next) && current !== next) captureCalendarExit(next > current ? 1 : -1);
+    } else if (button.matches(".floating-today")) {
+      const current = Number.parseInt(document.querySelector(".month-current")?.textContent || "", 10);
+      const today = new Date().getMonth() + 1;
+      if (Number.isFinite(current) && current !== today) captureCalendarExit(today > current ? 1 : -1);
+    }
+  }
+
+  function beginCalendarGesture(event) {
+    if (event.button > 0 || !event.target.closest?.(".calendar-month:not(.gsap-calendar-ghost)")) return;
+    calendarGesture = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+    };
+  }
+
+  function finishCalendarGesture(event) {
+    if (!calendarGesture || event.pointerId !== calendarGesture.pointerId) return;
+    const deltaX = event.clientX - calendarGesture.x;
+    const deltaY = event.clientY - calendarGesture.y;
+    calendarGesture = null;
+    if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
+      captureCalendarExit(deltaX < 0 ? 1 : -1);
+    }
+  }
+
+  function animateCalendarMonth(month) {
+    if (!month || calendarMonthsSeen.has(month)) return null;
+    calendarMonthsSeen.add(month);
+    const direction = month.classList.contains("next") ? 1 : month.classList.contains("prev") ? -1 : 0;
+    if (!direction || reducedMotion) return null;
+
+    const weekdays = month.querySelectorAll(".calendar-weekdays > span");
+    const days = month.querySelectorAll(".calendar-day:not(.outside-month)");
+    const empty = month.querySelector(".empty-month");
+    month.dataset.gsapCalendar = "entering";
+    let timeline = null;
+    const finish = () => {
+      month.dataset.gsapCalendar = "entered";
+      gsap.set([month, ...weekdays, ...days, empty].filter(Boolean), {
+        clearProps: "transform,opacity,visibility,transformOrigin",
+      });
+      if (timeline) activeCalendarTimelines.delete(timeline);
+    };
+    timeline = gsap.timeline({ onComplete: finish, onInterrupt: finish });
+    activeCalendarTimelines.add(timeline);
+    timeline.fromTo(month, {
+      x: direction * 126,
+      z: -190,
+      scale: 0.92,
+      rotationX: 8,
+      rotationY: direction * -28,
+      rotationZ: direction * 2.2,
+      autoAlpha: 0,
+      transformOrigin: direction > 0 ? "100% 50%" : "0% 50%",
+      transformPerspective: 980,
+    }, {
+      x: 0,
+      z: 0,
+      scale: 1,
+      rotationX: 0,
+      rotationY: 0,
+      rotationZ: 0,
+      autoAlpha: 1,
+      duration: 0.86,
+      ease: "back.out(1.35)",
+    }, 0);
+    timeline.fromTo(weekdays, {
+      y: -18,
+      rotationX: -48,
+      autoAlpha: 0,
+    }, {
+      y: 0,
+      rotationX: 0,
+      autoAlpha: 1,
+      duration: 0.5,
+      stagger: { amount: 0.24, from: direction > 0 ? "start" : "end" },
+      ease: "power3.out",
+    }, 0.12);
+    timeline.fromTo(days, {
+      x: direction * 22,
+      y: 34,
+      z: -90,
+      scale: 0.52,
+      rotationX: 62,
+      rotationY: direction * -16,
+      autoAlpha: 0,
+      transformOrigin: "50% 100%",
+    }, {
+      x: 0,
+      y: 0,
+      z: 0,
+      scale: 1,
+      rotationX: 0,
+      rotationY: 0,
+      autoAlpha: 1,
+      duration: 0.62,
+      stagger: {
+        amount: 0.52,
+        grid: "auto",
+        from: direction > 0 ? "start" : "end",
+      },
+      ease: "back.out(1.7)",
+    }, 0.18);
+    if (empty) {
+      timeline.fromTo(empty, { y: 20, scale: 0.94, autoAlpha: 0 }, {
+        y: 0,
+        scale: 1,
+        autoAlpha: 1,
+        duration: 0.56,
+        ease: "back.out(1.5)",
+      }, 0.32);
+    }
+    return timeline;
+  }
+
+  function scanCalendarTransitions(scope = document) {
+    scope.querySelectorAll?.(".calendar-month:not(.gsap-calendar-ghost)").forEach(animateCalendarMonth);
+  }
+
+  function stopCalendarMotion() {
+    activeCalendarTimelines.forEach((timeline) => timeline.kill?.());
+    activeCalendarTimelines.clear();
+    calendarGhost?.remove();
+    calendarGhost = null;
+    calendarGesture = null;
+    document.querySelectorAll(".calendar-month:not(.gsap-calendar-ghost)").forEach((month) => {
+      month.dataset.gsapCalendar = "entered";
+      gsap.set([month, ...month.querySelectorAll(".calendar-weekdays > span, .calendar-day, .empty-month")], {
+        clearProps: "transform,opacity,visibility,transformOrigin",
+      });
+    });
+  }
+
   function scheduleScrollRefresh() {
     if (!ScrollTrigger || reducedMotion || pendingScrollRefresh) return;
     pendingScrollRefresh = requestAnimationFrame(() => {
@@ -967,6 +1511,13 @@
     });
   }
 
+  function scanShowcaseEffects(scope = document) {
+    ensureVelocityField();
+    scanReactiveCards(scope);
+    scanLeaderboardPodiums(scope);
+    scanCalendarTransitions(scope);
+  }
+
   function queueScan() {
     if (pendingScan) return;
     pendingScan = requestAnimationFrame(() => {
@@ -975,12 +1526,24 @@
       scanRings();
       scanSheets();
       scanScrollMotion();
+      scanShowcaseEffects();
       scanMilestones();
     });
   }
 
   function stopActiveMotion() {
     stopScrollMotion();
+    stopReactiveMotion();
+    stopCalendarMotion();
+    activePodiumTimelines.forEach((timeline) => timeline.kill?.());
+    activePodiumTimelines.clear();
+    document.querySelectorAll(".leaderboard-podium-scene").forEach((scene) => {
+      scene.dataset.gsapPodium = "entered";
+      gsap.set([
+        scene.querySelector(".leaderboard-podium-horizon"),
+        ...scene.querySelectorAll(".leaderboard-podium-card, .leaderboard-podium-crown, .leaderboard-podium-avatar, .leaderboard-podium-beam, .leaderboard-podium-plinth"),
+      ].filter(Boolean), { clearProps: "transform,opacity,visibility,transformOrigin" });
+    });
     activeMilestoneTimelines.forEach((timeline) => timeline.kill?.());
     activeMilestoneTimelines.clear();
     document.querySelectorAll(".milestone-pop").forEach((overlay) => {
@@ -1072,10 +1635,15 @@
     celebrateMilestone,
     playLeaderboardFlip,
     scanRings,
+    scanShowcaseEffects,
     usesScrollTrigger: Boolean(ScrollTrigger),
   });
 
   document.addEventListener("click", scheduleCheckinTimeline, true);
+  document.addEventListener("click", captureCalendarNavigation, true);
+  document.addEventListener("pointerdown", beginCalendarGesture, true);
+  document.addEventListener("pointerup", finishCalendarGesture, true);
+  document.addEventListener("pointercancel", () => { calendarGesture = null; }, true);
   bodyObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (mutation.type === "attributes") {

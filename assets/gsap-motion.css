@@ -113,7 +113,7 @@
   perspective: 1100px;
 }
 
-[data-gsap-showcase="true"] > :not(.gsap-scroll-orb, .gsap-scroll-wire, .gsap-scroll-sheen) {
+[data-gsap-showcase="true"] > :not(.gsap-scroll-orb, .gsap-scroll-wire, .gsap-scroll-sheen, .gsap-holo-surface) {
   position: relative;
   z-index: 2;
 }
@@ -193,6 +193,155 @@
 [data-gsap-scroll="entering"] .gsap-scroll-wire,
 [data-gsap-scroll="entering"] .gsap-scroll-sheen {
   will-change: transform, opacity;
+}
+
+/* Scroll velocity becomes a visible atmospheric force, not just a progress value. */
+.gsap-velocity-field {
+  position: fixed;
+  z-index: 0;
+  inset: -18vh -22vw;
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: .8;
+  transform-origin: 50% 50%;
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 0 52%, transparent 82%);
+  mask-image: radial-gradient(ellipse at center, #000 0 52%, transparent 82%);
+}
+
+.gsap-velocity-field > i {
+  position: absolute;
+  left: -20%;
+  width: 140%;
+  height: 1px;
+  display: block;
+  background: linear-gradient(90deg, transparent, rgba(78, 225, 169, .12), rgba(255, 255, 255, .35), rgba(78, 225, 169, .1), transparent);
+  box-shadow: 0 0 14px rgba(49, 198, 139, .14);
+  transform: rotate(-8deg);
+  will-change: transform;
+}
+
+.gsap-velocity-field > i:nth-child(1) { top: 22%; }
+.gsap-velocity-field > i:nth-child(2) { top: 41%; opacity: .72; }
+.gsap-velocity-field > i:nth-child(3) { top: 62%; opacity: .52; }
+.gsap-velocity-field > i:nth-child(4) { top: 79%; opacity: .34; }
+
+.gsap-velocity-field > b {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  width: min(66vw, 620px);
+  aspect-ratio: 1.6;
+  display: block;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(49, 198, 139, .2), rgba(125, 223, 255, .08) 36%, transparent 70%);
+  opacity: 0;
+  filter: blur(24px);
+  transform: translateX(-50%);
+  will-change: transform, opacity;
+}
+
+/* Touch and pointer driven holographic glass, composited above card content. */
+[data-gsap-holo="true"] {
+  transform-style: preserve-3d;
+  perspective: 1100px;
+}
+
+[data-gsap-holo="true"] > :not(.gsap-holo-surface, .gsap-scroll-orb, .gsap-scroll-wire, .gsap-scroll-sheen) {
+  position: relative;
+  z-index: 2;
+}
+
+.gsap-holo-surface {
+  position: absolute !important;
+  z-index: 6 !important;
+  inset: -1px !important;
+  display: block;
+  margin: 0 !important;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: inherit;
+  pointer-events: none;
+  transform: translateZ(34px);
+  transform-style: preserve-3d;
+}
+
+.gsap-holo-glare,
+.gsap-holo-spectrum,
+.gsap-holo-grid {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.gsap-holo-glare {
+  top: -30%;
+  left: -30%;
+  width: 160%;
+  height: 160%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .82), rgba(184, 255, 229, .24) 18%, transparent 47%);
+  opacity: 0;
+  filter: blur(3px);
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.gsap-holo-spectrum {
+  inset: -42%;
+  background: conic-gradient(from 118deg, transparent 0 18%, rgba(112, 255, 216, .24), rgba(118, 174, 255, .2), rgba(245, 131, 255, .18), transparent 62% 100%);
+  opacity: 0;
+  filter: blur(9px) saturate(150%);
+  mix-blend-mode: color-dodge;
+  transform: rotate(-18deg) scale(1.15);
+  will-change: opacity;
+}
+
+.gsap-holo-grid {
+  inset: 0;
+  background:
+    repeating-linear-gradient(112deg, transparent 0 19px, rgba(255, 255, 255, .08) 20px, transparent 21px),
+    linear-gradient(125deg, rgba(255, 255, 255, .12), transparent 36% 68%, rgba(49, 198, 139, .08));
+  opacity: .35;
+  mix-blend-mode: overlay;
+}
+
+[data-gsap-holo="true"]:active .gsap-holo-grid {
+  opacity: .58;
+}
+
+/* A month exits as a physical page while the next grid assembles in depth. */
+.history {
+  perspective: 1200px;
+}
+
+.calendar-month[data-gsap-calendar="entering"],
+.gsap-calendar-ghost {
+  transition: none !important;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.gsap-calendar-ghost {
+  contain: layout paint style;
+  pointer-events: none !important;
+  user-select: none;
+}
+
+.gsap-calendar-ghost .calendar-day {
+  pointer-events: none !important;
+  will-change: transform, opacity;
+}
+
+.calendar-month.is-dragging[data-drag-direction="next"] {
+  transform: perspective(980px) translate3d(var(--calendar-drag-x, 0), 0, 26px) rotateY(-8deg) rotateZ(-.55deg);
+  transform-origin: 100% 50%;
+}
+
+.calendar-month.is-dragging[data-drag-direction="prev"] {
+  transform: perspective(980px) translate3d(var(--calendar-drag-x, 0), 0, 26px) rotateY(8deg) rotateZ(.55deg);
+  transform-origin: 0% 50%;
 }
 
 /* Deliberately theatrical milestone unlock sequence. */
@@ -369,6 +518,9 @@
     display: none !important;
   }
 
+  .gsap-velocity-field,
+  .gsap-holo-surface,
+  .gsap-calendar-ghost,
   .gsap-scroll-orb,
   .gsap-scroll-wire,
   .gsap-scroll-sheen,
@@ -379,7 +531,13 @@
   [data-gsap-animating],
   [data-gsap-sheet],
   [data-gsap-scroll],
+  [data-gsap-holo],
+  [data-gsap-calendar],
   .is-gsap-flipping [data-flip-id] {
     will-change: auto;
+  }
+
+  .calendar-month.is-dragging[data-drag-direction] {
+    transform: translate3d(var(--calendar-drag-x, 0), 0, 0);
   }
 }

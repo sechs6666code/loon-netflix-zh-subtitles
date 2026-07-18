@@ -1,4 +1,4 @@
-const CACHE_NAME = "chonglema-shell-20260718-3";
+const CACHE_NAME = "chonglema-shell-20260718-4";
 const PRIVATE_DB = "chonglema-private-state";
 const PRIVATE_STORE = "state";
 const TODAY_STATE_KEY = "today-record";
@@ -13,8 +13,8 @@ const APP_SHELL = [
   "./assets/refine-motion.js?v=20260718-1",
   "./assets/recovery-module.css",
   "./assets/recovery-module.js",
-  "./assets/leaderboard-module.css?v=20260718-1",
-  "./assets/leaderboard-module.js?v=20260718-1",
+  "./assets/leaderboard-module.css?v=20260718-2",
+  "./assets/leaderboard-module.js?v=20260718-2",
   "./assets/leaderboard-core.js",
   "./assets/leaderboard-config.js",
   "./assets/pwa-module.css?v=20260717-1",
@@ -22,8 +22,8 @@ const APP_SHELL = [
   "./assets/gsap.min.js?v=3.15.0",
   "./assets/Flip.min.js?v=3.15.0",
   "./assets/ScrollTrigger.min.js?v=3.15.0",
-  "./assets/gsap-motion.css?v=20260718-3",
-  "./assets/gsap-motion.js?v=20260718-3",
+  "./assets/gsap-motion.css?v=20260718-4",
+  "./assets/gsap-motion.js?v=20260718-4",
   "./assets/pwa-icon-192.png",
   "./assets/pwa-icon-512.png",
 ];

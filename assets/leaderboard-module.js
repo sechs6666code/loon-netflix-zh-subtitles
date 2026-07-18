@@ -380,7 +380,10 @@ import {
     previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     overlay.hidden = false;
-    requestAnimationFrame(() => overlay.classList.add("is-open"));
+    requestAnimationFrame(() => {
+      overlay.classList.add("is-open");
+      window.ChonglemaGsapMotion?.scanShowcaseEffects?.();
+    });
     render();
     void (state.profile.isPublic && state.profile.publicId
       ? publishProfile({ quiet: true })
@@ -805,11 +808,17 @@ import {
 
     const podium = entries.slice(0, 3).map((entry) => {
       const mine = profileKey(entry.publicId) === profileKey(state.profile.publicId);
-      const mark = Number(entry.rank) === 1 ? "♛" : Number(entry.rank) === 2 ? "Ⅱ" : "Ⅲ";
+      const rankNumber = Number(entry.rank) || 0;
+      const mark = rankNumber === 1 ? "♛" : rankNumber === 2 ? "Ⅱ" : "Ⅲ";
+      const rankLabel = rankNumber === 1 ? "冠军" : rankNumber === 2 ? "亚军" : "季军";
       const flipId = escapeHtml(`profile-${profileKey(entry.publicId)}`);
-      return `<article class="leaderboard-podium-card rank-${Number(entry.rank)}${mine ? " is-mine" : ""}" data-flip-id="${flipId}">
-        <em>${mark}</em><span>${escapeHtml(Array.from(String(entry.publicId))[0]?.toUpperCase() || "?")}</span>
+      return `<article class="leaderboard-podium-card rank-${rankNumber}${mine ? " is-mine" : ""}" data-flip-id="${flipId}" data-podium-rank="${rankNumber}">
+        <i class="leaderboard-podium-beam" aria-hidden="true"></i>
+        <em class="leaderboard-podium-crown" aria-hidden="true">${mark}</em>
+        <span class="leaderboard-podium-avatar">${escapeHtml(Array.from(String(entry.publicId))[0]?.toUpperCase() || "?")}</span>
         <b>${escapeHtml(entry.publicId)}</b><strong>${Number(entry.days) || 0}<small> 天</small></strong>
+        <small class="leaderboard-podium-rank">${rankLabel}</small>
+        <i class="leaderboard-podium-plinth" aria-hidden="true"><span>${rankNumber}</span></i>
       </article>`;
     }).join("");
     const rows = entries.slice(3).map((entry) => {
@@ -822,7 +831,11 @@ import {
         <strong>${Number(entry.days) || 0}<small> 天</small></strong>
       </div>`;
     }).join("");
-    list.innerHTML = `<div class="leaderboard-podium">${podium}</div>${rows ? `<div class="leaderboard-rows">${rows}</div>` : ""}`;
+    list.innerHTML = `<div class="leaderboard-podium-scene" data-podium-tone="${state.tab}">
+      <i class="leaderboard-podium-horizon" aria-hidden="true"></i>
+      <div class="leaderboard-podium">${podium}</div>
+    </div>${rows ? `<div class="leaderboard-rows">${rows}</div>` : ""}`;
+    window.ChonglemaGsapMotion?.scanShowcaseEffects?.();
   }
 
   function render() {
