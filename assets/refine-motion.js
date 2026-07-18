@@ -413,6 +413,10 @@
       .forEach((element) => {
         if (seenEntrance.has(element)) return;
         seenEntrance.add(element);
+        if (
+          window.ChonglemaGsapMotion?.usesScrollTrigger
+          && !element.matches(".topbar, .hero")
+        ) return;
         element.classList.add("motion-card");
         element.style.setProperty("--motion-index", String(Math.min(entranceIndex++, 7)));
 

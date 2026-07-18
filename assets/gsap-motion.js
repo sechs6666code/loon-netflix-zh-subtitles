@@ -2,9 +2,11 @@
   const root = document.getElementById("root");
   const gsap = window.gsap;
   const Flip = window.Flip;
+  const ScrollTrigger = window.ScrollTrigger;
   if (!root || !gsap) return;
 
-  if (Flip) gsap.registerPlugin(Flip);
+  const plugins = [Flip, ScrollTrigger].filter(Boolean);
+  if (plugins.length) gsap.registerPlugin(...plugins);
 
   const html = document.documentElement;
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -16,11 +18,25 @@
   const ringState = new WeakMap();
   const ringTweens = new WeakMap();
   const controlledSheetState = new WeakMap();
+  const scrollRevealSeen = new WeakSet();
+  const scrollRevealTriggers = new Set();
   const activeNumberElements = new Set();
   const activeRings = new Set();
   let reducedMotion = reducedMotionQuery.matches;
   let bodyObserver = null;
   let pendingScan = 0;
+  let pendingScrollRefresh = 0;
+  let scrollProgressElement = null;
+  let scrollProgressTween = null;
+
+  const scrollRevealSelector = [
+    ".leaderboard-inline-entry",
+    ".catchup",
+    ".stats > .stat-card",
+    ".month-summary",
+    ".history",
+    "footer",
+  ].join(", ");
 
   const leaderboardNumberSelector = [
     "[data-leaderboard-trigger-count]",
@@ -420,6 +436,112 @@
     return animation;
   }
 
+  function scheduleScrollRefresh() {
+    if (!ScrollTrigger || reducedMotion || pendingScrollRefresh) return;
+    pendingScrollRefresh = requestAnimationFrame(() => {
+      pendingScrollRefresh = requestAnimationFrame(() => {
+        pendingScrollRefresh = 0;
+        ScrollTrigger.refresh();
+      });
+    });
+  }
+
+  function ensureScrollProgress() {
+    if (!ScrollTrigger || reducedMotion || scrollProgressElement?.isConnected) return;
+    const progress = document.createElement("span");
+    progress.className = "gsap-scroll-progress";
+    progress.setAttribute("aria-hidden", "true");
+    progress.innerHTML = "<i></i>";
+    document.body.append(progress);
+    scrollProgressElement = progress;
+
+    const bar = progress.firstElementChild;
+    gsap.set(bar, { scaleX: 0, transformOrigin: "0 50%" });
+    scrollProgressTween = gsap.to(bar, {
+      scaleX: 1,
+      ease: "none",
+      scrollTrigger: {
+        id: "page-progress",
+        start: 0,
+        end: "max",
+        scrub: 0.18,
+      },
+    });
+  }
+
+  function revealScrollBatch(elements) {
+    elements.forEach((element) => {
+      element.dataset.gsapScroll = "waiting";
+      element.classList.remove("motion-card", "motion-enter");
+      const compactCard = element.matches(".stats > .stat-card:not(.streak-card)");
+      const compactIndex = compactCard
+        ? Array.from(element.parentElement?.children || []).indexOf(element)
+        : 0;
+      gsap.set(element, {
+        x: compactCard ? (compactIndex % 2 ? 22 : -22) : 0,
+        y: element.matches(".history") ? 46 : 34,
+        scale: element.matches("footer") ? 1 : 0.97,
+        autoAlpha: 0,
+        transformOrigin: "50% 100%",
+      });
+    });
+
+    const triggers = ScrollTrigger.batch(elements, {
+      start: "clamp(top 90%)",
+      once: true,
+      interval: 0.08,
+      batchMax: 3,
+      onEnter: (batch) => {
+        batch.forEach((element) => {
+          element.dataset.gsapScroll = "entering";
+        });
+        gsap.to(batch, {
+          x: 0,
+          y: 0,
+          scale: 1,
+          autoAlpha: 1,
+          duration: 0.72,
+          stagger: 0.085,
+          ease: "power3.out",
+          overwrite: "auto",
+          onComplete: () => {
+            batch.forEach((element) => {
+              element.dataset.gsapScroll = "entered";
+            });
+            gsap.set(batch, { clearProps: "transform,opacity,visibility,transformOrigin" });
+          },
+        });
+      },
+    });
+    triggers.forEach((trigger) => scrollRevealTriggers.add(trigger));
+  }
+
+  function scanScrollMotion(scope = document) {
+    if (!ScrollTrigger || reducedMotion) return;
+    ensureScrollProgress();
+    const elements = Array.from(scope.querySelectorAll?.(scrollRevealSelector) || [])
+      .filter((element) => !scrollRevealSeen.has(element));
+    if (!elements.length) return;
+    elements.forEach((element) => scrollRevealSeen.add(element));
+    revealScrollBatch(elements);
+    scheduleScrollRefresh();
+  }
+
+  function stopScrollMotion() {
+    if (pendingScrollRefresh) cancelAnimationFrame(pendingScrollRefresh);
+    pendingScrollRefresh = 0;
+    scrollRevealTriggers.forEach((trigger) => trigger.kill?.());
+    scrollRevealTriggers.clear();
+    scrollProgressTween?.kill?.();
+    scrollProgressTween = null;
+    scrollProgressElement?.remove();
+    scrollProgressElement = null;
+    document.querySelectorAll(scrollRevealSelector).forEach((element) => {
+      element.dataset.gsapScroll = "entered";
+      gsap.set(element, { clearProps: "transform,opacity,visibility,transformOrigin" });
+    });
+  }
+
   function queueScan() {
     if (pendingScan) return;
     pendingScan = requestAnimationFrame(() => {
@@ -427,10 +549,12 @@
       scanLeaderboardNumbers();
       scanRings();
       scanSheets();
+      scanScrollMotion();
     });
   }
 
   function stopActiveMotion() {
+    stopScrollMotion();
     activeNumberElements.forEach((element) => {
       const target = numberTargetState.get(element);
       const complete = numberCompletion.get(element);
@@ -501,6 +625,7 @@
       reducedMotion = Boolean(context.conditions.reduceMotion);
       html.dataset.gsapMotion = reducedMotion ? "reduced" : "full";
       if (reducedMotion) stopActiveMotion();
+      requestAnimationFrame(queueScan);
       return () => stopActiveMotion();
     },
   );
@@ -510,6 +635,7 @@
     captureLeaderboard,
     playLeaderboardFlip,
     scanRings,
+    usesScrollTrigger: Boolean(ScrollTrigger),
   });
 
   document.addEventListener("click", scheduleCheckinTimeline, true);

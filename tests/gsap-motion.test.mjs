@@ -10,12 +10,15 @@ const [source, indexSource, serviceWorkerSource] = await Promise.all([
 await Promise.all([
   access(new URL("../assets/gsap.min.js", import.meta.url)),
   access(new URL("../assets/Flip.min.js", import.meta.url)),
+  access(new URL("../assets/ScrollTrigger.min.js", import.meta.url)),
   access(new URL("../assets/gsap-motion.css", import.meta.url)),
 ]);
 assert.ok(indexSource.indexOf("gsap.min.js") < indexSource.indexOf("gsap-motion.js"));
 assert.ok(indexSource.indexOf("Flip.min.js") < indexSource.indexOf("gsap-motion.js"));
+assert.ok(indexSource.indexOf("ScrollTrigger.min.js") < indexSource.indexOf("gsap-motion.js"));
 assert.match(serviceWorkerSource, /gsap\.min\.js/);
 assert.match(serviceWorkerSource, /Flip\.min\.js/);
+assert.match(serviceWorkerSource, /ScrollTrigger\.min\.js/);
 assert.match(serviceWorkerSource, /gsap-motion\.js/);
 
 const dom = new JSDOM(`<!doctype html><html><body>
@@ -28,6 +31,8 @@ const dom = new JSDOM(`<!doctype html><html><body>
       </div>
     </section>
     <div class="progress-ring"><svg><circle class="ring-value" style="stroke-dashoffset:25"></circle></svg><strong>12<small>天</small></strong></div>
+    <section class="stats"><article class="stat-card">统计</article></section>
+    <section class="history">历史</section>
   </div>
   <strong data-leaderboard-inline-ninja>2</strong>
   <div class="leaderboard-list"><article data-flip-id="profile-a">A</article></div>
@@ -72,7 +77,7 @@ const timeline = (options = {}) => {
 };
 
 window.gsap = {
-  registerPlugin(plugin) { calls.push({ type: "register", plugin }); },
+  registerPlugin(...plugins) { plugins.forEach((plugin) => calls.push({ type: "register", plugin })); },
   to(target, vars) {
     calls.push({ type: "to", target, vars });
     applyObjectValues(target, vars);
@@ -117,6 +122,15 @@ window.Flip = {
     return tween();
   },
 };
+window.ScrollTrigger = {
+  batch(targets, vars) {
+    const elements = Array.from(targets);
+    calls.push({ type: "scroll-batch", targets: elements, vars });
+    window.setTimeout(() => vars.onEnter?.(elements, []), 0);
+    return elements.map(() => ({ kill() { calls.push({ type: "scroll-kill" }); } }));
+  },
+  refresh() { calls.push({ type: "scroll-refresh" }); },
+};
 window.matchMedia = (query) => ({
   media: query,
   matches: query.includes("no-preference"),
@@ -135,8 +149,13 @@ window.eval(source);
 await new Promise((resolve) => window.setTimeout(resolve, 70));
 assert.equal(window.document.documentElement.dataset.gsapMotion, "full");
 assert.ok(calls.some((call) => call.type === "register" && call.plugin === window.Flip));
+assert.ok(calls.some((call) => call.type === "register" && call.plugin === window.ScrollTrigger));
 assert.ok(calls.some((call) => call.type === "matchMedia" && "reduceMotion" in call.conditions));
 assert.ok(calls.some((call) => call.type === "fromTo" && call.target === window.document.querySelector(".ring-value")));
+assert.equal(window.ChonglemaGsapMotion.usesScrollTrigger, true);
+assert.ok(calls.some((call) => call.type === "scroll-batch"));
+assert.equal(window.document.querySelector(".stat-card").dataset.gsapScroll, "entered");
+assert.ok(window.document.querySelector(".gsap-scroll-progress"));
 
 answer.click();
 await new Promise((resolve) => window.setTimeout(resolve, 80));
@@ -164,5 +183,6 @@ assert.ok(calls.some((call) => call.type === "fromTo" && call.target === overlay
 
 window.dispatchEvent(new window.Event("pagehide"));
 await new Promise((resolve) => window.setTimeout(resolve, 20));
+assert.equal(window.document.querySelector(".gsap-scroll-progress"), null);
 dom.window.close();
 console.log("GSAP motion interaction tests passed");
