@@ -358,12 +358,13 @@ import {
         const nextTab = button.dataset.tab === "rush" ? "rush" : "ninja";
         if (nextTab === state.tab) return;
         const list = overlay?.querySelector(".leaderboard-list");
+        if (list?.dataset.gsapRace === "entering") return;
         const flipState = window.ChonglemaGsapMotion?.captureLeaderboard(list);
         state.tab = nextTab;
         renderTabs();
         renderBoard();
-        window.ChonglemaGsapMotion?.playLeaderboardFlip(flipState, list);
-        navigator.vibrate?.(5);
+        window.ChonglemaGsapMotion?.playLeaderboardFlip(flipState, list, state.tab);
+        navigator.vibrate?.([6, 14, 10]);
       });
     });
     return element;

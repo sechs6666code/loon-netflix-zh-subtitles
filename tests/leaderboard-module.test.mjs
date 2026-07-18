@@ -22,7 +22,17 @@ Object.defineProperties(globalThis, {
   MutationObserver: { value: window.MutationObserver, configurable: true },
   requestAnimationFrame: { value: window.requestAnimationFrame.bind(window), configurable: true },
 });
-window.navigator.vibrate = () => true;
+const vibrationCalls = [];
+window.navigator.vibrate = (pattern) => {
+  vibrationCalls.push(pattern);
+  return true;
+};
+const boardTransitionCalls = [];
+window.ChonglemaGsapMotion = {
+  captureLeaderboard: (list) => ({ list }),
+  playLeaderboardFlip: (_captured, list, tone) => boardTransitionCalls.push({ list, tone }),
+  scanShowcaseEffects() {},
+};
 window.QRCode = {
   toCanvas: async (canvas, value) => { canvas.dataset.recoveryCode = value; },
 };
@@ -151,6 +161,8 @@ overlay.querySelector('[data-tab="rush"]').click();
 assert.match(overlay.querySelector("[data-leaderboard-board-label]").textContent, /历史最长连冲/);
 assert.match(overlay.querySelector("[data-leaderboard-my-rank]").textContent, /#1/);
 overlay.querySelector('[data-tab="ninja"]').click();
+assert.deepEqual(boardTransitionCalls.map((call) => call.tone), ["rush", "ninja"]);
+assert.deepEqual(vibrationCalls.at(-1), [6, 14, 10]);
 assert.equal(overlay.querySelectorAll(".leaderboard-badge").length, 10, "both streak types should render five milestone badges");
 
 overlay.querySelector("[data-recovery-copy]").click();

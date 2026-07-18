@@ -37,6 +37,242 @@
   background: radial-gradient(circle, rgba(237, 116, 104, .26), transparent 63%);
 }
 
+/* A deliberately cinematic boot sequence. The content remains usable beneath it. */
+.gsap-motion-ready[data-gsap-intro="pending"] .hero.motion-card,
+.gsap-motion-ready[data-gsap-intro="playing"] .hero.motion-card {
+  opacity: 1;
+  transform: none;
+  animation: none !important;
+}
+
+.gsap-motion-ready[data-gsap-intro="pending"] .topbar,
+.gsap-motion-ready[data-gsap-intro="pending"] .hero :is(.date, h1, .subline, .answer) {
+  opacity: 0;
+}
+
+.gsap-motion-ready[data-gsap-intro="pending"] .hero.motion-enter :is(.date, h1, .subline, .check-actions),
+.gsap-motion-ready[data-gsap-intro="playing"] .hero.motion-enter :is(.date, h1, .subline, .check-actions),
+.gsap-motion-ready[data-gsap-intro="pending"] .topbar.motion-enter,
+.gsap-motion-ready[data-gsap-intro="playing"] .topbar.motion-enter {
+  animation: none !important;
+}
+
+.gsap-cinematic-intro {
+  position: fixed;
+  z-index: 10090;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: #f4fff9;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(49, 198, 139, .18), transparent 33%),
+    linear-gradient(145deg, #07100d, #020504 68%);
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.gsap-cinematic-shutter {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  left: 0;
+  height: 51%;
+  display: block;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 78px, rgba(255, 255, 255, .018) 79px 80px),
+    linear-gradient(180deg, rgba(255, 255, 255, .045), transparent 34%),
+    #06100c;
+  box-shadow: 0 0 50px rgba(0, 0, 0, .82);
+  will-change: transform;
+}
+
+.gsap-cinematic-shutter.shutter-top {
+  top: 0;
+  border-bottom: 1px solid rgba(118, 255, 204, .26);
+}
+
+.gsap-cinematic-shutter.shutter-bottom {
+  bottom: 0;
+  border-top: 1px solid rgba(118, 255, 204, .26);
+}
+
+.gsap-cinematic-mark {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 250px;
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+  text-align: center;
+  will-change: transform, opacity;
+}
+
+.gsap-cinematic-mark small {
+  color: rgba(153, 255, 217, .78);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: .48em;
+}
+
+.gsap-cinematic-mark b {
+  margin-top: 9px;
+  font-size: clamp(28px, 6vw, 58px);
+  font-weight: 830;
+  letter-spacing: -.045em;
+  text-shadow: 0 0 32px rgba(49, 198, 139, .42);
+}
+
+.gsap-cinematic-streaks,
+.gsap-cinematic-flare {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.gsap-cinematic-streaks {
+  inset: 0;
+}
+
+.gsap-cinematic-streak {
+  position: absolute;
+  top: calc(19% + var(--streak) * 8.5%);
+  left: -28%;
+  width: 156%;
+  height: 1px;
+  display: block;
+  background: linear-gradient(90deg, transparent, rgba(91, 247, 188, .1), rgba(255, 255, 255, .76), rgba(91, 247, 188, .1), transparent);
+  box-shadow: 0 0 16px rgba(49, 198, 139, .28);
+  transform: rotate(calc(-5deg + var(--streak) * 1.25deg));
+  will-change: transform, opacity;
+}
+
+.gsap-cinematic-flare {
+  top: 50%;
+  left: 10%;
+  width: 80%;
+  height: 2px;
+  border-radius: 999px;
+  background: #d8ffef;
+  box-shadow:
+    0 0 12px rgba(196, 255, 233, .95),
+    0 0 42px rgba(49, 198, 139, .72),
+    0 0 110px rgba(49, 198, 139, .42);
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+/* Check-in success becomes a full-screen, origin-aware impact burst. */
+.gsap-checkin-impact {
+  --impact-accent: #31c68b;
+  --impact-accent-rgb: 49, 198, 139;
+  position: fixed;
+  z-index: 10070;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.gsap-checkin-impact[data-impact-type="rush"] {
+  --impact-accent: #ed7468;
+  --impact-accent-rgb: 237, 116, 104;
+}
+
+.gsap-checkin-impact-flash,
+.gsap-checkin-impact-rings,
+.gsap-checkin-impact-streaks,
+.gsap-checkin-impact-particles {
+  position: absolute;
+  top: var(--impact-y);
+  left: var(--impact-x);
+  display: block;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.gsap-checkin-impact-flash {
+  width: min(54vw, 440px);
+  height: min(54vw, 440px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .94), rgba(var(--impact-accent-rgb), .48) 18%, transparent 66%);
+  filter: blur(2px);
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+.gsap-checkin-impact-rings > i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 112px;
+  height: 112px;
+  display: block;
+  border: 2px solid rgba(var(--impact-accent-rgb), .72);
+  border-radius: 42% 58% 55% 45%;
+  box-shadow: 0 0 26px rgba(var(--impact-accent-rgb), .42), inset 0 0 20px rgba(var(--impact-accent-rgb), .14);
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+.gsap-checkin-impact-rings > i:nth-child(2) {
+  border-style: dashed;
+  border-radius: 50%;
+}
+
+.gsap-checkin-impact-rings > i:nth-child(3) {
+  border-width: 1px;
+  border-radius: 60% 40% 48% 52%;
+}
+
+.gsap-checkin-streak {
+  position: absolute;
+  bottom: 0;
+  left: -2px;
+  width: 4px;
+  height: 126px;
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(to top, rgba(var(--impact-accent-rgb), .86), transparent 76%);
+  transform: rotate(calc(var(--streak) * 30deg));
+  transform-origin: 50% 100%;
+  will-change: transform, opacity;
+}
+
+.gsap-checkin-particle {
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  width: 8px;
+  height: 13px;
+  display: block;
+  border-radius: 3px 8px 3px 8px;
+  background: var(--impact-accent);
+  box-shadow: 0 0 14px rgba(var(--impact-accent-rgb), .72);
+  will-change: transform, opacity;
+}
+
+.gsap-checkin-particle:nth-child(3n) {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.gsap-checkin-particle:nth-child(4n) {
+  width: 4px;
+  height: 20px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--impact-accent) 54%, #fff);
+}
+
 [data-gsap-animating="checkin"],
 [data-gsap-animating="checkin"] .answer-icon,
 [data-gsap-animating="number"],
@@ -519,6 +755,8 @@
   }
 
   .gsap-velocity-field,
+  .gsap-cinematic-intro,
+  .gsap-checkin-impact,
   .gsap-holo-surface,
   .gsap-calendar-ghost,
   .gsap-scroll-orb,
@@ -533,6 +771,7 @@
   [data-gsap-scroll],
   [data-gsap-holo],
   [data-gsap-calendar],
+  [data-gsap-cinematic],
   .is-gsap-flipping [data-flip-id] {
     will-change: auto;
   }

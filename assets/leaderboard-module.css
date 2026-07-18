@@ -392,6 +392,12 @@
   box-shadow: inset 0 1px rgba(255, 255, 255, .75), 0 13px 34px rgba(38, 62, 49, .055);
 }
 
+.leaderboard-board-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
 .leaderboard-profile-jump {
   display: none;
 }
@@ -894,6 +900,124 @@
 .leaderboard-tabs [data-tab="rush"].is-selected {
   background: color-mix(in srgb, var(--red) 9%, var(--solid));
   color: var(--red);
+}
+
+/* Switching boards plays like changing race circuits, with the old board exiting physically. */
+.gsap-leaderboard-race-ghost {
+  position: absolute !important;
+  z-index: 8 !important;
+  margin: 0 !important;
+  overflow: hidden;
+  pointer-events: none !important;
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+.gsap-leaderboard-race-ghost :is(button, input, textarea, select, a) {
+  pointer-events: none !important;
+}
+
+.gsap-leaderboard-race-fx {
+  --race-accent: #31c68b;
+  --race-accent-rgb: 49, 198, 139;
+  position: absolute;
+  z-index: 14;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(var(--race-accent-rgb), .16), transparent 38%),
+    linear-gradient(110deg, transparent 18%, color-mix(in srgb, var(--race-accent) 10%, transparent), transparent 78%);
+  perspective: 900px;
+  transform-style: preserve-3d;
+  will-change: opacity;
+}
+
+.gsap-leaderboard-race-fx[data-race-tone="rush"] {
+  --race-accent: #ed7468;
+  --race-accent-rgb: 237, 116, 104;
+}
+
+.gsap-leaderboard-race-label {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 138px;
+  padding: 11px 16px 12px;
+  border: 1px solid rgba(var(--race-accent-rgb), .38);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--solid) 78%, transparent);
+  box-shadow:
+    0 14px 44px rgba(29, 38, 33, .2),
+    0 0 30px rgba(var(--race-accent-rgb), .18),
+    inset 0 1px rgba(255, 255, 255, .52);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(145%);
+  color: var(--text);
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.gsap-leaderboard-race-label small {
+  color: var(--race-accent);
+  font-size: 7px;
+  font-weight: 780;
+  letter-spacing: .2em;
+}
+
+.gsap-leaderboard-race-label b {
+  margin-top: 4px;
+  font-size: 15px;
+  letter-spacing: -.035em;
+}
+
+.gsap-leaderboard-race-lines {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  transform: rotate(-8deg) scale(1.18);
+}
+
+.gsap-leaderboard-race-lines > i {
+  position: absolute;
+  top: calc(13% + var(--lane) * 12.5%);
+  left: -32%;
+  width: 164%;
+  height: 1px;
+  display: block;
+  background: linear-gradient(90deg, transparent, rgba(var(--race-accent-rgb), .18), rgba(255, 255, 255, .72), rgba(var(--race-accent-rgb), .18), transparent);
+  box-shadow: 0 0 12px rgba(var(--race-accent-rgb), .28);
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+.gsap-leaderboard-race-flare {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: -20%;
+  width: 140%;
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--race-accent) 42%, #fff);
+  box-shadow:
+    0 0 12px rgba(255, 255, 255, .84),
+    0 0 36px rgba(var(--race-accent-rgb), .76),
+    0 0 80px rgba(var(--race-accent-rgb), .34);
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+.leaderboard-list[data-gsap-race="entering"] {
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
 }
 
 .leaderboard-refresh {
@@ -1934,6 +2058,15 @@
 
   .leaderboard-loading i {
     animation: none;
+  }
+
+  .gsap-leaderboard-race-fx,
+  .gsap-leaderboard-race-ghost {
+    display: none !important;
+  }
+
+  .leaderboard-list[data-gsap-race] {
+    will-change: auto;
   }
 
   .leaderboard-podium-card::after,

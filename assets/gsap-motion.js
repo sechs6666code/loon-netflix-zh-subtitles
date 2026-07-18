@@ -22,6 +22,8 @@
   const scrollRevealTriggers = new Set();
   const scrollDepthTweens = new Set();
   const scrollDecorationTweens = new WeakMap();
+  const activeCheckinTimelines = new Set();
+  const activeLeaderboardRaceTimelines = new Set();
   const activeMilestoneTimelines = new Set();
   const activePodiumTimelines = new Set();
   const activeCalendarTimelines = new Set();
@@ -44,6 +46,11 @@
   let calendarGhost = null;
   let calendarCaptureStamp = 0;
   let calendarCaptureDirection = 0;
+  let cinematicIntroStarted = false;
+  let cinematicIntroTimeline = null;
+  let cinematicIntroElement = null;
+
+  html.dataset.gsapIntro = reducedMotion ? "reduced" : "pending";
 
   const milestoneDays = [3, 7, 14, 30, 60, 90, 180, 365];
   const scrollProgressTweens = new Set();
@@ -283,6 +290,169 @@
     return days;
   }
 
+  function cinematicStreakMarkup(count = 8) {
+    return Array.from({ length: count }, (_, index) =>
+      `<i class="gsap-cinematic-streak" style="--streak:${index}" aria-hidden="true"></i>`).join("");
+  }
+
+  function finishCinematicIntro() {
+    const hero = document.querySelector(".hero");
+    const topbar = document.querySelector(".topbar");
+    const targets = [
+      hero,
+      topbar,
+      hero?.querySelector(".date"),
+      hero?.querySelector("h1"),
+      hero?.querySelector(".subline"),
+      ...Array.from(hero?.querySelectorAll(".answer") || []),
+    ].filter(Boolean);
+    cinematicIntroElement?.remove();
+    cinematicIntroElement = null;
+    cinematicIntroTimeline = null;
+    html.dataset.gsapIntro = reducedMotion ? "reduced" : "complete";
+    topbar?.classList.remove("motion-card", "motion-enter");
+    hero?.classList.remove("motion-card", "motion-enter");
+    gsap.set(targets, { clearProps: "transform,opacity,visibility,transformOrigin,transformStyle" });
+  }
+
+  function runCinematicIntro() {
+    if (cinematicIntroStarted || reducedMotion) {
+      if (reducedMotion) html.dataset.gsapIntro = "reduced";
+      return null;
+    }
+    const hero = document.querySelector(".hero");
+    const topbar = document.querySelector(".topbar");
+    const date = hero?.querySelector(".date");
+    const title = hero?.querySelector("h1");
+    const subline = hero?.querySelector(".subline");
+    const allAnswers = Array.from(hero?.querySelectorAll(".answer") || []);
+    const selected = hero?.querySelector(".answer.selected");
+    const answers = hero?.classList.contains("completed") && !hero.classList.contains("motion-editing") && selected
+      ? [selected]
+      : allAnswers;
+    if (!hero || !topbar || !date || !title || !subline || !answers.length) return null;
+
+    cinematicIntroStarted = true;
+    html.dataset.gsapIntro = "playing";
+    hero.dataset.gsapCinematic = "playing";
+    const overlay = document.createElement("div");
+    overlay.className = "gsap-cinematic-intro";
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.innerHTML = `
+      <i class="gsap-cinematic-shutter shutter-top"></i>
+      <i class="gsap-cinematic-shutter shutter-bottom"></i>
+      <span class="gsap-cinematic-mark"><small>DAILY RITUAL</small><b>CHONG LE MEI</b></span>
+      <span class="gsap-cinematic-streaks">${cinematicStreakMarkup()}</span>
+      <i class="gsap-cinematic-flare"></i>
+    `;
+    document.body.append(overlay);
+    cinematicIntroElement = overlay;
+
+    const shutters = Array.from(overlay.querySelectorAll(".gsap-cinematic-shutter"));
+    const mark = overlay.querySelector(".gsap-cinematic-mark");
+    const markParts = Array.from(mark?.children || []);
+    const streaks = Array.from(overlay.querySelectorAll(".gsap-cinematic-streak"));
+    const flare = overlay.querySelector(".gsap-cinematic-flare");
+    const targets = [topbar, date, title, subline, ...answers];
+    gsap.killTweensOf(targets);
+    gsap.set([hero, ...targets], { transformPerspective: 1200, transformStyle: "preserve-3d" });
+
+    let timeline = null;
+    timeline = gsap.timeline({
+      defaults: { ease: "power4.out" },
+      onComplete: () => {
+        delete hero.dataset.gsapCinematic;
+        finishCinematicIntro();
+      },
+      onInterrupt: () => {
+        delete hero.dataset.gsapCinematic;
+        finishCinematicIntro();
+      },
+    });
+    cinematicIntroTimeline = timeline;
+    timeline
+      .fromTo(overlay, { autoAlpha: 1 }, { autoAlpha: 1, duration: 0.01 }, 0)
+      .fromTo(shutters[0], { yPercent: 0 }, { yPercent: -106, duration: 0.94, ease: "expo.inOut" }, 0.5)
+      .fromTo(shutters[1], { yPercent: 0 }, { yPercent: 106, duration: 0.94, ease: "expo.inOut" }, 0.5)
+      .fromTo(mark, { z: -240, scale: 0.68, rotationX: 22, autoAlpha: 0 }, {
+        z: 0,
+        scale: 1,
+        rotationX: 0,
+        autoAlpha: 1,
+        duration: 0.62,
+        ease: "back.out(1.55)",
+      }, 0.06)
+      .fromTo(markParts, { y: 18, autoAlpha: 0 }, {
+        y: 0,
+        autoAlpha: 1,
+        duration: 0.4,
+        stagger: 0.08,
+      }, 0.16)
+      .fromTo(streaks, { xPercent: -165, scaleX: 0.25, autoAlpha: 0 }, {
+        xPercent: 175,
+        scaleX: 1,
+        autoAlpha: 0.74,
+        duration: 0.82,
+        stagger: 0.035,
+        ease: "power3.inOut",
+      }, 0.2)
+      .fromTo(flare, { scaleX: 0.1, autoAlpha: 0 }, {
+        scaleX: 1,
+        autoAlpha: 0.9,
+        duration: 0.42,
+      }, 0.42)
+      .to(flare, { scaleX: 1.7, autoAlpha: 0, duration: 0.48 }, 0.68)
+      .fromTo(topbar, { y: -42, z: -110, autoAlpha: 0 }, {
+        y: 0,
+        z: 0,
+        autoAlpha: 1,
+        duration: 0.72,
+      }, 0.5)
+      .fromTo(date, { y: -34, z: -160, rotationX: 76, autoAlpha: 0 }, {
+        y: 0,
+        z: 0,
+        rotationX: 0,
+        autoAlpha: 1,
+        duration: 0.72,
+        ease: "back.out(1.45)",
+      }, 0.58)
+      .fromTo(title, { y: 58, z: -240, scale: 0.74, rotationX: 18, autoAlpha: 0 }, {
+        y: 0,
+        z: 0,
+        scale: 1,
+        rotationX: 0,
+        autoAlpha: 1,
+        duration: 0.88,
+        ease: "expo.out",
+      }, 0.62)
+      .fromTo(subline, { y: 24, z: -90, autoAlpha: 0 }, {
+        y: 0,
+        z: 0,
+        autoAlpha: 1,
+        duration: 0.58,
+      }, 0.78)
+      .fromTo(answers, {
+        y: 58,
+        z: -180,
+        scale: 0.86,
+        rotationY: (index) => (index % 2 ? 12 : -12),
+        autoAlpha: 0,
+        transformOrigin: "50% 100%",
+      }, {
+        y: 0,
+        z: 0,
+        scale: 1,
+        rotationY: 0,
+        autoAlpha: 1,
+        duration: 0.82,
+        stagger: 0.1,
+        ease: "back.out(1.55)",
+      }, 0.82)
+      .to(mark, { y: -22, z: 80, scale: 1.12, autoAlpha: 0, duration: 0.42, ease: "power3.in" }, 0.76)
+      .to(overlay, { autoAlpha: 0, duration: 0.38, ease: "power2.in" }, 1.18);
+    return timeline;
+  }
+
   function milestoneParticleMarkup(count = 28) {
     return Array.from({ length: count }, (_, index) =>
       `<i style="--particle:${index}" aria-hidden="true"></i>`).join("");
@@ -485,6 +655,118 @@
     });
   }
 
+  function checkinParticleMarkup(count = 30) {
+    return Array.from({ length: count }, (_, index) =>
+      `<i class="gsap-checkin-particle" style="--particle:${index}" aria-hidden="true"></i>`).join("");
+  }
+
+  function checkinStreakMarkup(count = 12) {
+    return Array.from({ length: count }, (_, index) =>
+      `<i class="gsap-checkin-streak" style="--streak:${index}" aria-hidden="true"></i>`).join("");
+  }
+
+  function triggerCheckinHaptics(type) {
+    try {
+      window.navigator?.vibrate?.(type === "yes" ? [12, 18, 26, 18, 44] : [16, 22, 40]);
+    } catch {
+      // Haptics are a progressive enhancement and may be blocked by the device.
+    }
+  }
+
+  function createCheckinImpact(answer, type) {
+    if (!answer || reducedMotion) return null;
+    const rect = answer.getBoundingClientRect();
+    const hero = answer.closest(".hero");
+    const impact = document.createElement("div");
+    impact.className = "gsap-checkin-impact";
+    impact.dataset.impactType = type === "yes" ? "rush" : "ninja";
+    impact.setAttribute("aria-hidden", "true");
+    impact.style.setProperty("--impact-x", `${Math.round(rect.left + rect.width / 2)}px`);
+    impact.style.setProperty("--impact-y", `${Math.round(rect.top + rect.height / 2)}px`);
+    impact.innerHTML = `
+      <i class="gsap-checkin-impact-flash"></i>
+      <span class="gsap-checkin-impact-rings"><i></i><i></i><i></i></span>
+      <span class="gsap-checkin-impact-streaks">${checkinStreakMarkup()}</span>
+      <span class="gsap-checkin-impact-particles">${checkinParticleMarkup()}</span>
+    `;
+    document.body.append(impact);
+
+    const flash = impact.querySelector(".gsap-checkin-impact-flash");
+    const rings = Array.from(impact.querySelectorAll(".gsap-checkin-impact-rings > i"));
+    const streaks = Array.from(impact.querySelectorAll(".gsap-checkin-streak"));
+    const particles = Array.from(impact.querySelectorAll(".gsap-checkin-particle"));
+    const radius = Math.min(360, Math.max(180, window.innerWidth * 0.32));
+    const vectors = particles.map((_, index) => {
+      const angle = (Math.PI * 2 * index) / particles.length + gsap.utils.random(-0.16, 0.16);
+      const distance = gsap.utils.random(radius * 0.52, radius, 2);
+      return {
+        x: Math.cos(angle) * distance,
+        y: Math.sin(angle) * distance,
+        rotation: gsap.utils.random(-280, 280, 5),
+        scale: gsap.utils.random(0.55, 1.55, 0.05),
+      };
+    });
+    const direction = type === "yes" ? 1 : -1;
+    let timeline = null;
+    const finish = () => {
+      activeCheckinTimelines.delete(timeline);
+      impact.remove();
+      if (hero) gsap.set(hero, { clearProps: "transform" });
+    };
+    timeline = gsap.timeline({
+      defaults: { ease: "power4.out" },
+      onComplete: finish,
+      onInterrupt: finish,
+    });
+    activeCheckinTimelines.add(timeline);
+    timeline
+      .fromTo(impact, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.01 }, 0)
+      .fromTo(flash, { scale: 0.08, autoAlpha: 0.95 }, {
+        scale: 3.1,
+        autoAlpha: 0,
+        duration: 0.58,
+        ease: "expo.out",
+      }, 0)
+      .fromTo(rings, { scale: 0.06, rotation: -24, autoAlpha: 0.92 }, {
+        scale: (index) => 1.42 + index * 0.48,
+        rotation: (index) => 26 + index * 22,
+        autoAlpha: 0,
+        duration: 0.82,
+        stagger: 0.055,
+        ease: "expo.out",
+      }, 0.02)
+      .fromTo(streaks, { scaleY: 0.05, yPercent: 12, autoAlpha: 0 }, {
+        scaleY: 1,
+        yPercent: -82,
+        autoAlpha: 0.84,
+        duration: 0.56,
+        stagger: 0.018,
+      }, 0.04)
+      .to(streaks, { yPercent: -125, scaleY: 1.7, autoAlpha: 0, duration: 0.34 }, 0.42)
+      .fromTo(particles, { x: 0, y: 0, scale: 0, rotation: 0, autoAlpha: 0 }, {
+        x: (index) => vectors[index].x,
+        y: (index) => vectors[index].y,
+        scale: (index) => vectors[index].scale,
+        rotation: (index) => vectors[index].rotation,
+        autoAlpha: 1,
+        duration: 0.72,
+        stagger: 0.004,
+      }, 0.03)
+      .to(particles, {
+        y: "+=42",
+        rotation: "+=120",
+        autoAlpha: 0,
+        duration: 0.44,
+        stagger: 0.003,
+        ease: "power2.in",
+      }, 0.43)
+      .to(hero, { x: direction * 6, rotation: direction * 0.24, duration: 0.055, ease: "power2.out" }, 0.03)
+      .to(hero, { x: direction * -4, rotation: direction * -0.16, duration: 0.07 }, 0.085)
+      .to(hero, { x: 0, rotation: 0, duration: 0.16, ease: "power3.out" }, 0.155)
+      .to(impact, { autoAlpha: 0, duration: 0.18, ease: "power2.in" }, 0.78);
+    return timeline;
+  }
+
   function runCheckinTimeline(answer) {
     const hero = answer?.closest(".hero");
     if (!answer || !hero || !hero.classList.contains("completed") || reducedMotion) return;
@@ -497,6 +779,8 @@
     wash.className = "gsap-checkin-wash";
     wash.setAttribute("aria-hidden", "true");
     answer.append(wash);
+    const type = answer.classList.contains("yes") ? "yes" : "no";
+    createCheckinImpact(answer, type);
 
     const pathLength = typeof path?.getTotalLength === "function"
       ? Math.max(24, path.getTotalLength())
@@ -513,16 +797,21 @@
       });
     }
 
-    const timeline = gsap.timeline({
+    let timeline = null;
+    const finish = () => {
+      activeCheckinTimelines.delete(timeline);
+      wash.remove();
+      delete hero.dataset.gsapCheckin;
+      clearAnimatingFlag(answer);
+      gsap.set(targets, { clearProps: "transform,opacity,visibility" });
+      if (path) gsap.set(path, { clearProps: "strokeDasharray,strokeDashoffset" });
+    };
+    timeline = gsap.timeline({
       defaults: { ease: "power3.out" },
-      onComplete: () => {
-        wash.remove();
-        delete hero.dataset.gsapCheckin;
-        clearAnimatingFlag(answer);
-        gsap.set(targets, { clearProps: "transform,opacity,visibility" });
-        if (path) gsap.set(path, { clearProps: "strokeDasharray,strokeDashoffset" });
-      },
+      onComplete: finish,
+      onInterrupt: finish,
     });
+    activeCheckinTimelines.add(timeline);
 
     timeline
       .fromTo(answer, { y: 7, scale: 0.975 }, { y: 0, scale: 1, duration: 0.48 }, 0)
@@ -565,6 +854,7 @@
 
     const type = answer.classList.contains("yes") ? "yes" : "no";
     const previousStreakDays = readCurrentStreak(type);
+    triggerCheckinHaptics(type);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const selected = document.querySelector(`.hero.completed .answer.${type}.selected`);
@@ -676,42 +966,190 @@
   }
 
   function captureLeaderboard(list) {
-    if (reducedMotion || !Flip || !list) return null;
+    if (reducedMotion || !list) return null;
     const targets = list.querySelectorAll("[data-flip-id]");
-    if (!targets.length) return null;
-    return Flip.getState(targets, { props: "opacity" });
+    const flipState = Flip && targets.length
+      ? Flip.getState(targets, { props: "opacity" })
+      : null;
+    const board = list.closest(".leaderboard-board-card") || list.parentElement;
+    const listRect = list.getBoundingClientRect();
+    const boardRect = board?.getBoundingClientRect();
+    let ghost = null;
+    if (board && list.childElementCount && boardRect) {
+      ghost = list.cloneNode(true);
+      ghost.classList.add("gsap-leaderboard-race-ghost", "is-gsap-flipping");
+      ghost.removeAttribute("aria-live");
+      ghost.setAttribute("aria-hidden", "true");
+      ghost.inert = true;
+      ghost.querySelectorAll("[id]").forEach((element) => element.removeAttribute("id"));
+      Object.assign(ghost.style, {
+        top: `${Math.round(listRect.top - boardRect.top)}px`,
+        left: `${Math.round(listRect.left - boardRect.left)}px`,
+        width: `${Math.round(listRect.width)}px`,
+        height: `${Math.round(listRect.height)}px`,
+      });
+      board.append(ghost);
+    }
+    list.classList.add("is-gsap-flipping");
+    return {
+      flipState,
+      ghost,
+      previousTone: list.querySelector(".leaderboard-podium-scene")?.dataset.podiumTone || "ninja",
+    };
   }
 
-  function playLeaderboardFlip(flipState, list) {
-    if (reducedMotion || !Flip || !flipState || !list) return null;
+  function playLeaderboardFlip(capturedState, list, nextTone = "ninja") {
+    if (reducedMotion || !list) {
+      capturedState?.ghost?.remove?.();
+      list?.classList.remove("is-gsap-flipping");
+      return null;
+    }
+    const payload = capturedState && Object.prototype.hasOwnProperty.call(capturedState, "flipState")
+      ? capturedState
+      : { flipState: capturedState, ghost: null, previousTone: nextTone === "rush" ? "ninja" : "rush" };
     const targets = list.querySelectorAll("[data-flip-id]");
-    if (!targets.length) return null;
+    const tone = nextTone === "rush" ? "rush" : "ninja";
+    const direction = tone === "rush" ? 1 : -1;
+    const board = list.closest(".leaderboard-board-card") || list.parentElement;
+    const summary = Array.from(board?.querySelectorAll(".leaderboard-board-summary > div") || []);
+    const selectedTab = board?.querySelector(`[data-tab="${tone}"]`);
+    const raceFx = document.createElement("div");
+    raceFx.className = "gsap-leaderboard-race-fx";
+    raceFx.dataset.raceTone = tone;
+    raceFx.setAttribute("aria-hidden", "true");
+    raceFx.innerHTML = `
+      <span class="gsap-leaderboard-race-label"><small>${tone === "rush" ? "RUSH CIRCUIT" : "NINJA CIRCUIT"}</small><b>${tone === "rush" ? "连冲赛道" : "忍者赛道"}</b></span>
+      <span class="gsap-leaderboard-race-lines">${Array.from({ length: 7 }, (_, index) => `<i style="--lane:${index}"></i>`).join("")}</span>
+      <i class="gsap-leaderboard-race-flare"></i>
+    `;
+    board?.append(raceFx);
+    const raceLabel = raceFx.querySelector(".gsap-leaderboard-race-label");
+    const raceLines = Array.from(raceFx.querySelectorAll(".gsap-leaderboard-race-lines > i"));
+    const raceFlare = raceFx.querySelector(".gsap-leaderboard-race-flare");
     list.classList.add("is-gsap-flipping");
-    const animation = Flip.from(flipState, {
-      targets,
-      absolute: true,
-      scale: true,
-      simple: true,
-      duration: 0.48,
-      ease: "power3.inOut",
-      stagger: 0.025,
-      onEnter: (elements) => gsap.fromTo(elements, { y: 10, autoAlpha: 0 }, {
-        y: 0,
-        autoAlpha: 1,
-        duration: 0.34,
-        stagger: 0.025,
-        ease: "power2.out",
-      }),
-      onLeave: (elements) => gsap.to(elements, {
-        y: -8,
-        autoAlpha: 0,
-        duration: 0.2,
-        ease: "power2.in",
-      }),
-      onComplete: () => list.classList.remove("is-gsap-flipping"),
-      onInterrupt: () => list.classList.remove("is-gsap-flipping"),
+    list.dataset.gsapRace = "entering";
+
+    let flipAnimation = null;
+    if (Flip && payload.flipState && targets.length) {
+      flipAnimation = Flip.from(payload.flipState, {
+        targets,
+        absolute: true,
+        scale: true,
+        simple: true,
+        duration: 0.58,
+        ease: "power3.inOut",
+        stagger: 0.028,
+        onEnter: (elements) => gsap.fromTo(elements, { y: 18, z: -80, autoAlpha: 0 }, {
+          y: 0,
+          z: 0,
+          autoAlpha: 1,
+          duration: 0.46,
+          stagger: 0.035,
+          ease: "back.out(1.45)",
+        }),
+        onLeave: (elements) => gsap.to(elements, {
+          y: -14,
+          z: -70,
+          autoAlpha: 0,
+          duration: 0.24,
+          ease: "power2.in",
+        }),
+      });
+    }
+
+    let timeline = null;
+    const finish = () => {
+      activeLeaderboardRaceTimelines.delete(timeline);
+      payload.ghost?.remove?.();
+      raceFx.remove();
+      list.classList.remove("is-gsap-flipping");
+      list.dataset.gsapRace = "entered";
+      gsap.set([list, ...summary, selectedTab].filter(Boolean), {
+        clearProps: "transform,opacity,visibility,transformOrigin",
+      });
+      window.setTimeout(() => scanShowcaseEffects(list), 0);
+    };
+    timeline = gsap.timeline({
+      defaults: { ease: "power4.out" },
+      onComplete: finish,
+      onInterrupt: finish,
     });
-    return animation;
+    activeLeaderboardRaceTimelines.add(timeline);
+    timeline
+      .fromTo(raceFx, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.08 }, 0)
+      .fromTo(raceLines, { xPercent: direction * -170, scaleX: 0.2, autoAlpha: 0 }, {
+        xPercent: direction * 175,
+        scaleX: 1,
+        autoAlpha: 0.86,
+        duration: 0.72,
+        stagger: 0.025,
+        ease: "power3.inOut",
+      }, 0)
+      .fromTo(raceFlare, { xPercent: direction * -140, scaleX: 0.15, autoAlpha: 0 }, {
+        xPercent: direction * 150,
+        scaleX: 1.5,
+        autoAlpha: 0.92,
+        duration: 0.62,
+        ease: "power2.inOut",
+      }, 0.04)
+      .fromTo(raceLabel, { x: direction * 52, z: -120, scale: 0.72, rotationY: direction * -18, autoAlpha: 0 }, {
+        x: 0,
+        z: 0,
+        scale: 1,
+        rotationY: 0,
+        autoAlpha: 1,
+        duration: 0.42,
+        ease: "back.out(1.7)",
+      }, 0.08)
+      .to(raceLabel, { x: direction * -34, z: 90, scale: 1.08, autoAlpha: 0, duration: 0.3, ease: "power3.in" }, 0.42);
+    if (payload.ghost) {
+      timeline.fromTo(payload.ghost, { x: 0, z: 0, rotationY: 0, autoAlpha: 1 }, {
+        x: direction * -120,
+        z: -180,
+        rotationY: direction * 14,
+        autoAlpha: 0,
+        duration: 0.42,
+        ease: "power3.in",
+      }, 0);
+    }
+    timeline
+      .fromTo(list, {
+        x: direction * 104,
+        z: -150,
+        scale: 0.93,
+        rotationY: direction * -12,
+        skewX: direction * -3.5,
+        autoAlpha: 0.12,
+        transformOrigin: direction > 0 ? "0% 50%" : "100% 50%",
+      }, {
+        x: 0,
+        z: 0,
+        scale: 1,
+        rotationY: 0,
+        skewX: 0,
+        autoAlpha: 1,
+        duration: 0.68,
+        ease: "expo.out",
+      }, 0.16);
+    if (summary.length) {
+      timeline.fromTo(summary, { x: direction * 26, autoAlpha: 0 }, {
+        x: 0,
+        autoAlpha: 1,
+        duration: 0.42,
+        stagger: 0.045,
+      }, 0.26);
+    }
+    if (selectedTab) {
+      timeline.fromTo(selectedTab, { scaleX: 0.7, scaleY: 0.86 }, {
+        scaleX: 1,
+        scaleY: 1,
+        duration: 0.46,
+        ease: "elastic.out(1, 0.48)",
+      }, 0.22);
+    }
+    timeline.to(raceFx, { autoAlpha: 0, duration: 0.2, ease: "power2.in" }, 0.68);
+    timeline.flipAnimation = flipAnimation;
+    return timeline;
   }
 
   function animatePodiumScene(scene) {
@@ -1530,6 +1968,7 @@
     if (pendingScan) return;
     pendingScan = requestAnimationFrame(() => {
       pendingScan = 0;
+      runCinematicIntro();
       scanLeaderboardNumbers();
       scanRings();
       scanSheets();
@@ -1540,6 +1979,19 @@
   }
 
   function stopActiveMotion() {
+    cinematicIntroTimeline?.kill?.();
+    finishCinematicIntro();
+    activeCheckinTimelines.forEach((timeline) => timeline.kill?.());
+    activeCheckinTimelines.clear();
+    document.querySelectorAll(".gsap-checkin-impact").forEach((element) => element.remove());
+    activeLeaderboardRaceTimelines.forEach((timeline) => timeline.kill?.());
+    activeLeaderboardRaceTimelines.clear();
+    document.querySelectorAll(".gsap-leaderboard-race-fx, .gsap-leaderboard-race-ghost").forEach((element) => element.remove());
+    document.querySelectorAll(".leaderboard-list").forEach((list) => {
+      list.classList.remove("is-gsap-flipping");
+      delete list.dataset.gsapRace;
+      gsap.set(list, { clearProps: "transform,opacity,visibility,transformOrigin" });
+    });
     stopScrollMotion();
     stopReactiveMotion();
     stopCalendarMotion();
@@ -1591,6 +2043,10 @@
       ".hero h1",
       ".subline",
       ".gsap-checkin-wash",
+      ".gsap-checkin-impact",
+      ".gsap-cinematic-intro",
+      ".gsap-leaderboard-race-fx",
+      ".gsap-leaderboard-race-ghost",
       ".leaderboard-overlay",
       ".leaderboard-panel",
       ".pwa-reminder-overlay",
@@ -1632,6 +2088,7 @@
       reducedMotion = Boolean(context.conditions.reduceMotion);
       html.dataset.gsapMotion = reducedMotion ? "reduced" : "full";
       if (reducedMotion) stopActiveMotion();
+      else html.dataset.gsapIntro = cinematicIntroStarted ? "complete" : "pending";
       requestAnimationFrame(queueScan);
       return () => stopActiveMotion();
     },
@@ -1691,4 +2148,9 @@
 
   html.classList.add("gsap-motion-ready");
   requestAnimationFrame(queueScan);
+  window.setTimeout(() => {
+    if (!cinematicIntroStarted && html.dataset.gsapIntro === "pending") {
+      html.dataset.gsapIntro = "complete";
+    }
+  }, 1800);
 })();
