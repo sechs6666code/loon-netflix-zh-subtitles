@@ -24,7 +24,7 @@
   const scrollDecorationTweens = new WeakMap();
   const activeCheckinTimelines = new Set();
   const activeLeaderboardRaceTimelines = new Set();
-  const leaderboardRaceSafetyTimers = new Set();
+  const transientTimelineSafetyTimers = new Set();
   const activeMilestoneTimelines = new Set();
   const activePodiumTimelines = new Set();
   const activeCalendarTimelines = new Set();
@@ -56,6 +56,23 @@
 
   const milestoneDays = [3, 7, 14, 30, 60, 90, 180, 365];
   const scrollProgressTweens = new Set();
+
+  function armTimelineSafety(timeline, delay, finish) {
+    if (!timeline || !Number.isFinite(delay)) return () => {};
+    const timer = window.setTimeout(() => {
+      transientTimelineSafetyTimers.delete(timer);
+      try {
+        timeline.progress?.(1);
+      } finally {
+        finish?.();
+      }
+    }, delay);
+    transientTimelineSafetyTimers.add(timer);
+    return () => {
+      window.clearTimeout(timer);
+      transientTimelineSafetyTimers.delete(timer);
+    };
+  }
 
   const scrollRevealSelector = [
     ".leaderboard-inline-entry",
@@ -513,6 +530,7 @@
 
     if (reducedMotion) {
       overlay.dataset.gsapMilestone = "complete";
+      fx.remove();
       return null;
     }
 
@@ -533,18 +551,24 @@
     });
 
     let timeline = null;
+    let finished = false;
+    let cancelSafety = () => {};
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      cancelSafety();
+      activeMilestoneTimelines.delete(timeline);
+      overlay.dataset.gsapMilestone = "complete";
+      fx.remove();
+      gsap.set([overlay, card, core, kicker, title, copy].filter(Boolean), {
+        clearProps: "transform,opacity,visibility,transformOrigin",
+      });
+      if (overlay.classList.contains("gsap-milestone-custom")) overlay.remove();
+    };
     timeline = gsap.timeline({
       defaults: { ease: "power3.out" },
-      onComplete: () => {
-        activeMilestoneTimelines.delete(timeline);
-        overlay.dataset.gsapMilestone = "complete";
-        fx.remove();
-        gsap.set([overlay, card, core, kicker, title, copy].filter(Boolean), {
-          clearProps: "transform,opacity,visibility,transformOrigin",
-        });
-        if (overlay.classList.contains("gsap-milestone-custom")) overlay.remove();
-      },
-      onInterrupt: () => activeMilestoneTimelines.delete(timeline),
+      onComplete: finish,
+      onInterrupt: finish,
     });
     activeMilestoneTimelines.add(timeline);
 
@@ -620,6 +644,7 @@
       .to(card, { y: -18, scale: 1.05, autoAlpha: 0, duration: 0.38, ease: "power3.in" }, 2.12)
       .to(overlay, { autoAlpha: 0, duration: 0.32, ease: "power2.in" }, 2.18);
 
+    cancelSafety = armTimelineSafety(timeline, 3400, finish);
     return timeline;
   }
 
@@ -721,7 +746,12 @@
     });
     const direction = type === "yes" ? 1 : -1;
     let timeline = null;
+    let finished = false;
+    let cancelSafety = () => {};
     const finish = () => {
+      if (finished) return;
+      finished = true;
+      cancelSafety();
       activeCheckinTimelines.delete(timeline);
       impact.remove();
       if (hero) gsap.set(hero, { clearProps: "transform" });
@@ -777,6 +807,7 @@
       .to(hero, { x: direction * -4, rotation: direction * -0.16, duration: 0.07 }, 0.085)
       .to(hero, { x: 0, rotation: 0, duration: 0.16, ease: "power3.out" }, 0.155)
       .to(impact, { autoAlpha: 0, duration: 0.18, ease: "power2.in" }, 0.78);
+    cancelSafety = armTimelineSafety(timeline, 1600, finish);
     return timeline;
   }
 
@@ -811,7 +842,12 @@
     }
 
     let timeline = null;
+    let finished = false;
+    let cancelSafety = () => {};
     const finish = () => {
+      if (finished) return;
+      finished = true;
+      cancelSafety();
       activeCheckinTimelines.delete(timeline);
       wash.remove();
       delete hero.dataset.gsapCheckin;
@@ -851,6 +887,7 @@
     if (path) {
       timeline.to(path, { strokeDashoffset: 0, duration: 0.44, ease: "power2.out" }, 0.1);
     }
+    cancelSafety = armTimelineSafety(timeline, 1400, finish);
     window.setTimeout(scanRings, 0);
     return timeline;
   }
@@ -1071,13 +1108,12 @@
     }
 
     let timeline = null;
-    let safetyTimer = 0;
     let finished = false;
+    let cancelSafety = () => {};
     const finish = () => {
       if (finished) return;
       finished = true;
-      window.clearTimeout(safetyTimer);
-      leaderboardRaceSafetyTimers.delete(safetyTimer);
+      cancelSafety();
       activeLeaderboardRaceTimelines.delete(timeline);
       flipAnimation?.progress?.(1);
       payload.ghost?.remove?.();
@@ -1169,11 +1205,7 @@
     }
     timeline.to(raceFx, { autoAlpha: 0, duration: 0.2, ease: "power2.in" }, 0.68);
     timeline.flipAnimation = flipAnimation;
-    safetyTimer = window.setTimeout(() => {
-      timeline?.progress?.(1);
-      if (!finished) finish();
-    }, 1600);
-    leaderboardRaceSafetyTimers.add(safetyTimer);
+    cancelSafety = armTimelineSafety(timeline, 1600, finish);
     return timeline;
   }
 
@@ -1199,7 +1231,12 @@
     const beams = cards.map((card) => card.querySelector(".leaderboard-podium-beam")).filter(Boolean);
     const plinths = cards.map((card) => card.querySelector(".leaderboard-podium-plinth")).filter(Boolean);
     let timeline = null;
+    let finished = false;
+    let cancelSafety = () => {};
     const finish = () => {
+      if (finished) return;
+      finished = true;
+      cancelSafety();
       scene.dataset.gsapPodium = "entered";
       gsap.set([horizon, ...cards, ...crowns, ...avatars, ...beams, ...plinths].filter(Boolean), {
         clearProps: "transform,opacity,visibility,transformOrigin",
@@ -1290,6 +1327,7 @@
       stagger: 0.08,
       ease: "power2.out",
     }, 0.68);
+    cancelSafety = armTimelineSafety(timeline, 2400, finish);
     return timeline;
   }
 
@@ -1526,7 +1564,12 @@
       transformOrigin: resolvedDirection > 0 ? "0% 50%" : "100% 50%",
     });
     let timeline = null;
+    let finished = false;
+    let cancelSafety = () => {};
     const finish = () => {
+      if (finished) return;
+      finished = true;
+      cancelSafety();
       ghost.remove();
       if (calendarGhost === ghost) calendarGhost = null;
       if (timeline) activeCalendarTimelines.delete(timeline);
@@ -1552,6 +1595,7 @@
       stagger: { amount: 0.22, from: resolvedDirection > 0 ? "start" : "end" },
       ease: "power2.in",
     }, 0.05);
+    cancelSafety = armTimelineSafety(timeline, 1500, finish);
     return ghost;
   }
 
@@ -1601,7 +1645,12 @@
     const empty = month.querySelector(".empty-month");
     month.dataset.gsapCalendar = "entering";
     let timeline = null;
+    let finished = false;
+    let cancelSafety = () => {};
     const finish = () => {
+      if (finished) return;
+      finished = true;
+      cancelSafety();
       month.dataset.gsapCalendar = "entered";
       gsap.set([month, ...weekdays, ...days, empty].filter(Boolean), {
         clearProps: "transform,opacity,visibility,transformOrigin",
@@ -1677,6 +1726,7 @@
         ease: "back.out(1.5)",
       }, 0.32);
     }
+    cancelSafety = armTimelineSafety(timeline, 2100, finish);
     return timeline;
   }
 
@@ -2011,8 +2061,6 @@
     document.querySelectorAll(".gsap-checkin-impact").forEach((element) => element.remove());
     activeLeaderboardRaceTimelines.forEach((timeline) => timeline.kill?.());
     activeLeaderboardRaceTimelines.clear();
-    leaderboardRaceSafetyTimers.forEach((timer) => window.clearTimeout(timer));
-    leaderboardRaceSafetyTimers.clear();
     document.querySelectorAll(".gsap-leaderboard-race-fx, .gsap-leaderboard-race-ghost").forEach((element) => element.remove());
     document.querySelectorAll(".leaderboard-list").forEach((list) => {
       list.classList.remove("is-gsap-flipping");
@@ -2033,6 +2081,8 @@
     });
     activeMilestoneTimelines.forEach((timeline) => timeline.kill?.());
     activeMilestoneTimelines.clear();
+    transientTimelineSafetyTimers.forEach((timer) => window.clearTimeout(timer));
+    transientTimelineSafetyTimers.clear();
     document.querySelectorAll(".milestone-pop").forEach((overlay) => {
       const card = overlay.querySelector(":scope > div:not(.gsap-milestone-fx)");
       const targets = [overlay, card, ...Array.from(card?.children || [])].filter(Boolean);

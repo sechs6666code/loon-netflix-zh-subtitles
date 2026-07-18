@@ -201,8 +201,12 @@ assert.ok(calls.some((call) => call.type === "quickTo" && call.property === "sca
 assert.ok(calls.some((call) => call.type === "quickTo" && call.property === "scaleY"));
 assert.ok(calls.every((call) => call.type !== "quickTo" || !["scale", "rotationZ"].includes(call.property)), "quickTo should avoid composite transform aliases that emit reset warnings");
 
+const originalCheckinSetTimeout = window.setTimeout.bind(window);
+window.setTimeout = (callback, delay, ...args) => originalCheckinSetTimeout(callback, delay === 1600 ? 8 : delay, ...args);
+suppressNextTimelineCompletion = true;
 answer.click();
 await new Promise((resolve) => window.setTimeout(resolve, 80));
+window.setTimeout = originalCheckinSetTimeout;
 assert.ok(calls.some((call) => call.type === "timeline-fromTo" && call.target === answer));
 assert.equal(window.document.querySelectorAll(".gsap-checkin-wash").length, 0, "the check-in wash should clean itself up");
 assert.equal(window.document.querySelectorAll(".gsap-checkin-impact").length, 0, "the full-screen impact should clean itself up");
@@ -248,8 +252,12 @@ list.innerHTML = `<div class="leaderboard-podium-scene" data-podium-tone="ninja"
     <article class="leaderboard-podium-card rank-3" data-podium-rank="3"><i class="leaderboard-podium-beam"></i><em class="leaderboard-podium-crown">Ⅲ</em><span class="leaderboard-podium-avatar">C</span><i class="leaderboard-podium-plinth"><span>3</span></i></article>
   </div>
 </div>`;
+const originalPodiumSetTimeout = window.setTimeout.bind(window);
+window.setTimeout = (callback, delay, ...args) => originalPodiumSetTimeout(callback, delay === 2400 ? 8 : delay, ...args);
+suppressNextTimelineCompletion = true;
 window.ChonglemaGsapMotion.scanShowcaseEffects();
 await new Promise((resolve) => window.setTimeout(resolve, 45));
+window.setTimeout = originalPodiumSetTimeout;
 const podiumScene = list.querySelector(".leaderboard-podium-scene");
 assert.equal(podiumScene.dataset.gsapPodium, "entered");
 assert.ok(calls.some((call) => call.type === "timeline-fromTo" && call.target?.includes?.(podiumScene.querySelector('.rank-1'))));
@@ -265,6 +273,9 @@ await new Promise((resolve) => window.setTimeout(resolve, 45));
 assert.equal(nextMonth.dataset.gsapCalendar, "entered");
 assert.ok(calls.some((call) => call.type === "timeline-fromTo" && call.target === nextMonth));
 
+const originalMilestoneSetTimeout = window.setTimeout.bind(window);
+window.setTimeout = (callback, delay, ...args) => originalMilestoneSetTimeout(callback, delay === 3400 ? 8 : delay, ...args);
+suppressNextTimelineCompletion = true;
 const milestone = window.ChonglemaGsapMotion.celebrateMilestone(30, "rush");
 assert.ok(milestone?.classList.contains("gsap-milestone-custom"));
 assert.equal(milestone.dataset.milestoneType, "rush");
@@ -272,6 +283,7 @@ assert.equal(milestone.querySelectorAll(".gsap-milestone-particles > i").length,
 assert.match(milestone.textContent, /连冲 30 天/);
 assert.ok(calls.some((call) => call.type === "timeline-fromTo" && call.target === milestone));
 await new Promise((resolve) => window.setTimeout(resolve, 15));
+window.setTimeout = originalMilestoneSetTimeout;
 assert.equal(window.document.querySelector(".gsap-milestone-custom"), null, "custom milestone effects should clean up");
 
 window.dispatchEvent(new window.Event("pagehide"));
