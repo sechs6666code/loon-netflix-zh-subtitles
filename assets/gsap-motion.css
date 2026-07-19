@@ -37,7 +37,7 @@
   background: radial-gradient(circle, rgba(237, 116, 104, .26), transparent 63%);
 }
 
-/* A deliberately cinematic boot sequence. The content remains usable beneath it. */
+/* Editorial liquid-glass reveal: kinetic, tactile, and free of launch-screen branding. */
 .gsap-motion-ready[data-gsap-intro="pending"] .hero.motion-card,
 .gsap-motion-ready[data-gsap-intro="playing"] .hero.motion-card {
   opacity: 1;
@@ -63,105 +63,225 @@
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  color: #f4fff9;
+  contain: strict;
+  isolation: isolate;
+  color: #f2faf6;
   background:
-    radial-gradient(circle at 50% 48%, rgba(49, 198, 139, .18), transparent 33%),
-    linear-gradient(145deg, #07100d, #020504 68%);
-  perspective: 1200px;
+    radial-gradient(circle at 76% 18%, rgba(73, 229, 169, .16), transparent 31%),
+    radial-gradient(circle at 18% 76%, rgba(101, 132, 255, .08), transparent 36%),
+    linear-gradient(152deg, #08110e 0%, #030705 58%, #010302 100%);
+  perspective: 1400px;
   transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
 }
 
-.gsap-cinematic-shutter {
+.gsap-cinematic-intro::after {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: .12;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, .28) 0 .45px, transparent .7px),
+    radial-gradient(circle at 72% 64%, rgba(255, 255, 255, .2) 0 .45px, transparent .72px);
+  background-size: 7px 7px, 11px 11px;
+  mix-blend-mode: soft-light;
+}
+
+.gsap-cinematic-ambient {
+  position: absolute;
+  z-index: 0;
+  top: -22%;
+  left: -46%;
+  width: 124vmax;
+  height: 78vmax;
+  display: block;
+  border-radius: 48% 52% 62% 38% / 58% 34% 66% 42%;
+  background:
+    radial-gradient(circle at 62% 46%, rgba(75, 240, 177, .26), transparent 28%),
+    conic-gradient(from 210deg at 56% 48%, transparent, rgba(45, 191, 141, .11), transparent 38%, rgba(118, 138, 255, .07), transparent 72%);
+  filter: blur(34px);
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.gsap-cinematic-glyphs {
   position: absolute;
   z-index: 2;
-  right: 0;
-  left: 0;
-  height: 51%;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 3vh;
+  transform-style: preserve-3d;
+  white-space: nowrap;
+}
+
+.gsap-cinematic-glyphs > b {
   display: block;
+  color: rgba(239, 248, 243, .94);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+  font-size: clamp(148px, 47vw, 286px);
+  font-weight: 860;
+  line-height: .82;
+  letter-spacing: -.13em;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, .28),
+    0 28px 76px rgba(0, 0, 0, .42),
+    0 0 54px rgba(92, 234, 180, .09);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.gsap-cinematic-glyphs > b + b {
+  margin-left: -.08em;
+}
+
+.gsap-cinematic-lens,
+.gsap-cinematic-orbits {
+  position: absolute;
+  top: 47%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.gsap-cinematic-orbits {
+  z-index: 3;
+  width: clamp(186px, 58vw, 278px);
+  aspect-ratio: 1;
+}
+
+.gsap-cinematic-orbits > i {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border: 1px solid rgba(180, 255, 226, .34);
+  border-radius: 46% 54% 51% 49% / 56% 44% 58% 42%;
+  box-shadow: inset 0 0 24px rgba(80, 230, 171, .06);
+  will-change: transform, opacity;
+}
+
+.gsap-cinematic-orbits > i:nth-child(2) {
+  inset: 13%;
+  border-color: rgba(215, 255, 239, .26);
+  border-radius: 55% 45% 60% 40% / 44% 58% 42% 56%;
+}
+
+.gsap-cinematic-orbits > i:nth-child(3) {
+  inset: 27%;
+  border-color: rgba(255, 255, 255, .22);
+  border-radius: 50%;
+}
+
+.gsap-cinematic-lens {
+  z-index: 4;
+  width: clamp(122px, 35vw, 176px);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(225, 255, 244, .52);
+  border-radius: 46% 54% 58% 42% / 51% 43% 57% 49%;
   background:
-    repeating-linear-gradient(90deg, transparent 0 78px, rgba(255, 255, 255, .018) 79px 80px),
-    linear-gradient(180deg, rgba(255, 255, 255, .045), transparent 34%),
-    #06100c;
-  box-shadow: 0 0 50px rgba(0, 0, 0, .82);
-  will-change: transform;
+    linear-gradient(145deg, rgba(255, 255, 255, .19), rgba(88, 216, 166, .05) 46%, rgba(0, 0, 0, .14)),
+    rgba(10, 28, 21, .24);
+  box-shadow:
+    inset 11px 14px 24px rgba(255, 255, 255, .13),
+    inset -13px -16px 28px rgba(0, 0, 0, .25),
+    0 24px 66px rgba(0, 0, 0, .36),
+    0 0 52px rgba(64, 222, 161, .15);
+  -webkit-backdrop-filter: blur(24px) saturate(1.55);
+  backdrop-filter: blur(24px) saturate(1.55);
+  will-change: transform, opacity;
 }
 
-.gsap-cinematic-shutter.shutter-top {
-  top: 0;
-  border-bottom: 1px solid rgba(118, 255, 204, .26);
+.gsap-cinematic-lens > i,
+.gsap-cinematic-lens > b,
+.gsap-cinematic-lens > em {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  will-change: transform, opacity;
 }
 
-.gsap-cinematic-shutter.shutter-bottom {
-  bottom: 0;
-  border-top: 1px solid rgba(118, 255, 204, .26);
+.gsap-cinematic-lens > i {
+  inset: 9%;
+  background: radial-gradient(circle at 31% 26%, rgba(255, 255, 255, .42), rgba(116, 244, 195, .09) 28%, transparent 62%);
+  box-shadow: inset 0 0 22px rgba(255, 255, 255, .08);
 }
 
-.gsap-cinematic-mark {
+.gsap-cinematic-lens > b {
+  top: 7%;
+  left: 16%;
+  width: 56%;
+  height: 18%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .04));
+  transform: rotate(-28deg);
+  filter: blur(.4px);
+}
+
+.gsap-cinematic-lens > em {
+  right: 13%;
+  bottom: 12%;
+  width: 27%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(183, 255, 227, .5);
+  background: rgba(58, 215, 155, .13);
+  box-shadow: 0 0 18px rgba(75, 233, 172, .16);
+}
+
+.gsap-cinematic-scan {
   position: absolute;
   z-index: 5;
-  top: 50%;
-  left: 50%;
+  top: 48%;
+  left: -35%;
+  width: 170%;
+  height: 1px;
+  display: block;
+  background: linear-gradient(90deg, transparent 3%, rgba(152, 248, 211, .08) 29%, rgba(241, 255, 250, .9) 50%, rgba(92, 232, 177, .09) 72%, transparent 97%);
+  box-shadow: 0 0 18px rgba(77, 231, 172, .28);
+  transform: rotate(-8deg);
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+.gsap-cinematic-copy {
+  position: absolute;
+  z-index: 6;
+  right: 0;
+  bottom: max(12vh, 72px);
+  left: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 250px;
-  transform: translate(-50%, -50%);
-  transform-style: preserve-3d;
+  color: rgba(224, 244, 235, .78);
   text-align: center;
   will-change: transform, opacity;
 }
 
-.gsap-cinematic-mark small {
-  color: rgba(153, 255, 217, .78);
-  font-size: 9px;
-  font-weight: 760;
-  letter-spacing: .48em;
-}
-
-.gsap-cinematic-mark b {
-  margin-top: 9px;
-  font-size: clamp(28px, 6vw, 58px);
-  font-weight: 830;
-  letter-spacing: -.045em;
-  text-shadow: 0 0 32px rgba(49, 198, 139, .42);
-}
-
-.gsap-cinematic-streaks,
-.gsap-cinematic-flare {
-  position: absolute;
-  z-index: 4;
-  pointer-events: none;
-}
-
-.gsap-cinematic-streaks {
-  inset: 0;
-}
-
-.gsap-cinematic-streak {
-  position: absolute;
-  top: calc(19% + var(--streak) * 8.5%);
-  left: -28%;
-  width: 156%;
-  height: 1px;
+.gsap-cinematic-copy b,
+.gsap-cinematic-copy small {
   display: block;
-  background: linear-gradient(90deg, transparent, rgba(91, 247, 188, .1), rgba(255, 255, 255, .76), rgba(91, 247, 188, .1), transparent);
-  box-shadow: 0 0 16px rgba(49, 198, 139, .28);
-  transform: rotate(calc(-5deg + var(--streak) * 1.25deg));
   will-change: transform, opacity;
 }
 
-.gsap-cinematic-flare {
-  top: 50%;
-  left: 10%;
-  width: 80%;
-  height: 2px;
-  border-radius: 999px;
-  background: #d8ffef;
-  box-shadow:
-    0 0 12px rgba(196, 255, 233, .95),
-    0 0 42px rgba(49, 198, 139, .72),
-    0 0 110px rgba(49, 198, 139, .42);
-  transform-origin: 50% 50%;
+.gsap-cinematic-copy b {
+  font-size: 13px;
+  font-weight: 720;
+  letter-spacing: .32em;
+  text-indent: .32em;
+}
+
+.gsap-cinematic-copy small {
+  margin-top: 8px;
+  color: rgba(177, 219, 202, .52);
+  font-size: 9px;
+  font-weight: 620;
+  letter-spacing: .22em;
+  text-indent: .22em;
   will-change: transform, opacity;
 }
 

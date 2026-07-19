@@ -309,11 +309,6 @@
     return days;
   }
 
-  function cinematicStreakMarkup(count = 8) {
-    return Array.from({ length: count }, (_, index) =>
-      `<i class="gsap-cinematic-streak" style="--streak:${index}" aria-hidden="true"></i>`).join("");
-  }
-
   function finishCinematicIntro() {
     const hero = document.querySelector(".hero");
     const topbar = document.querySelector(".topbar");
@@ -360,20 +355,24 @@
     overlay.className = "gsap-cinematic-intro";
     overlay.setAttribute("aria-hidden", "true");
     overlay.innerHTML = `
-      <i class="gsap-cinematic-shutter shutter-top"></i>
-      <i class="gsap-cinematic-shutter shutter-bottom"></i>
-      <span class="gsap-cinematic-mark"><small>DAILY RITUAL</small><b>CHONG LE MEI</b></span>
-      <span class="gsap-cinematic-streaks">${cinematicStreakMarkup()}</span>
-      <i class="gsap-cinematic-flare"></i>
+      <i class="gsap-cinematic-ambient"></i>
+      <span class="gsap-cinematic-glyphs"><b>今</b><b>日</b></span>
+      <span class="gsap-cinematic-orbits"><i></i><i></i><i></i></span>
+      <span class="gsap-cinematic-lens"><i></i><b></b><em></em></span>
+      <i class="gsap-cinematic-scan"></i>
+      <span class="gsap-cinematic-copy"><b>今天</b><small>如实记录</small></span>
     `;
     document.body.append(overlay);
     cinematicIntroElement = overlay;
 
-    const shutters = Array.from(overlay.querySelectorAll(".gsap-cinematic-shutter"));
-    const mark = overlay.querySelector(".gsap-cinematic-mark");
-    const markParts = Array.from(mark?.children || []);
-    const streaks = Array.from(overlay.querySelectorAll(".gsap-cinematic-streak"));
-    const flare = overlay.querySelector(".gsap-cinematic-flare");
+    const ambient = overlay.querySelector(".gsap-cinematic-ambient");
+    const glyphs = Array.from(overlay.querySelectorAll(".gsap-cinematic-glyphs > b"));
+    const orbits = Array.from(overlay.querySelectorAll(".gsap-cinematic-orbits > i"));
+    const lens = overlay.querySelector(".gsap-cinematic-lens");
+    const lensLayers = Array.from(lens?.children || []);
+    const scan = overlay.querySelector(".gsap-cinematic-scan");
+    const copy = overlay.querySelector(".gsap-cinematic-copy");
+    const copyParts = Array.from(copy?.children || []);
     const targets = [topbar, date, title, subline, ...answers];
     gsap.killTweensOf(targets);
     gsap.set([hero, ...targets], { transformPerspective: 1200, transformStyle: "preserve-3d" });
@@ -393,84 +392,129 @@
     cinematicIntroTimeline = timeline;
     timeline
       .fromTo(overlay, { autoAlpha: 1 }, { autoAlpha: 1, duration: 0.01 }, 0)
-      .fromTo(shutters[0], { yPercent: 0 }, { yPercent: -106, duration: 0.94, ease: "expo.inOut" }, 0.5)
-      .fromTo(shutters[1], { yPercent: 0 }, { yPercent: 106, duration: 0.94, ease: "expo.inOut" }, 0.5)
-      .fromTo(mark, { z: -240, scale: 0.68, rotationX: 22, autoAlpha: 0 }, {
-        z: 0,
-        scale: 1,
-        rotationX: 0,
+      .fromTo(ambient, { xPercent: -34, yPercent: 20, scale: 0.48, rotation: -22, autoAlpha: 0 }, {
+        xPercent: 18,
+        yPercent: -12,
+        scale: 1.08,
+        rotation: 18,
         autoAlpha: 1,
-        duration: 0.62,
-        ease: "back.out(1.55)",
-      }, 0.06)
-      .fromTo(markParts, { y: 18, autoAlpha: 0 }, {
-        y: 0,
-        autoAlpha: 1,
-        duration: 0.4,
-        stagger: 0.08,
-      }, 0.16)
-      .fromTo(streaks, { xPercent: -165, scaleX: 0.25, autoAlpha: 0 }, {
-        xPercent: 175,
-        scaleX: 1,
-        autoAlpha: 0.74,
-        duration: 0.82,
-        stagger: 0.035,
-        ease: "power3.inOut",
-      }, 0.2)
-      .fromTo(flare, { scaleX: 0.1, autoAlpha: 0 }, {
-        scaleX: 1,
-        autoAlpha: 0.9,
-        duration: 0.42,
-      }, 0.42)
-      .to(flare, { scaleX: 1.7, autoAlpha: 0, duration: 0.48 }, 0.68)
-      .fromTo(topbar, { y: -42, z: -110, autoAlpha: 0 }, {
-        y: 0,
-        z: 0,
-        autoAlpha: 1,
-        duration: 0.72,
-      }, 0.5)
-      .fromTo(date, { y: -34, z: -160, rotationX: 76, autoAlpha: 0 }, {
-        y: 0,
-        z: 0,
-        rotationX: 0,
-        autoAlpha: 1,
-        duration: 0.72,
-        ease: "back.out(1.45)",
-      }, 0.58)
-      .fromTo(title, { y: 58, z: -240, scale: 0.74, rotationX: 18, autoAlpha: 0 }, {
-        y: 0,
-        z: 0,
-        scale: 1,
-        rotationX: 0,
-        autoAlpha: 1,
-        duration: 0.88,
+        duration: 1.18,
         ease: "expo.out",
-      }, 0.62)
-      .fromTo(subline, { y: 24, z: -90, autoAlpha: 0 }, {
+      }, 0)
+      .fromTo(glyphs, {
+        x: (index) => (index ? Math.min(150, window.innerWidth * 0.38) : -Math.min(150, window.innerWidth * 0.38)),
+        y: (index) => (index ? 28 : -34),
+        z: -220,
+        scale: 1.28,
+        rotation: (index) => (index ? 10 : -11),
+        autoAlpha: 0,
+      }, {
+        x: 0,
+        y: 0,
+        z: 0,
+        scale: 1,
+        rotation: 0,
+        autoAlpha: 1,
+        duration: 0.76,
+        stagger: 0.055,
+        ease: "expo.out",
+      }, 0.02)
+      .fromTo(lens, { scale: 0.08, rotation: -38, autoAlpha: 0 }, {
+        scale: 1,
+        rotation: 0,
+        autoAlpha: 1,
+        duration: 0.72,
+        ease: "back.out(1.3)",
+      }, 0.12)
+      .fromTo(lensLayers, { scale: 0.45, rotation: -24, autoAlpha: 0 }, {
+        scale: 1,
+        rotation: 0,
+        autoAlpha: 1,
+        duration: 0.66,
+        stagger: 0.06,
+        ease: "expo.out",
+      }, 0.2)
+      .fromTo(orbits, { scale: 0.18, rotation: -45, autoAlpha: 0 }, {
+        scale: (index) => 1 + index * 0.24,
+        rotation: (index) => 42 + index * 24,
+        autoAlpha: (index) => 0.55 - index * 0.13,
+        duration: 0.88,
+        stagger: 0.055,
+        ease: "expo.out",
+      }, 0.1)
+      .fromTo(scan, { xPercent: -190, scaleX: 0.18, autoAlpha: 0 }, {
+        xPercent: 190,
+        scaleX: 1,
+        autoAlpha: 0.86,
+        duration: 0.82,
+        ease: "expo.inOut",
+      }, 0.18)
+      .fromTo(copyParts, { y: 16, autoAlpha: 0 }, {
+        y: 0,
+        autoAlpha: 1,
+        duration: 0.42,
+        stagger: 0.07,
+      }, 0.28)
+      .fromTo(topbar, { y: -28, z: -90, autoAlpha: 0 }, {
         y: 0,
         z: 0,
         autoAlpha: 1,
-        duration: 0.58,
-      }, 0.78)
+        duration: 0.64,
+      }, 0.52)
+      .fromTo(date, { y: -24, z: -110, rotationX: 56, autoAlpha: 0 }, {
+        y: 0,
+        z: 0,
+        rotationX: 0,
+        autoAlpha: 1,
+        duration: 0.66,
+        ease: "back.out(1.25)",
+      }, 0.58)
+      .fromTo(title, { y: 48, z: -180, scale: 0.86, rotationX: 14, autoAlpha: 0 }, {
+        y: 0,
+        z: 0,
+        scale: 1,
+        rotationX: 0,
+        autoAlpha: 1,
+        duration: 0.82,
+        ease: "expo.out",
+      }, 0.6)
+      .fromTo(subline, { y: 18, z: -70, autoAlpha: 0 }, {
+        y: 0,
+        z: 0,
+        autoAlpha: 1,
+        duration: 0.54,
+      }, 0.72)
       .fromTo(answers, {
-        y: 58,
-        z: -180,
-        scale: 0.86,
-        rotationY: (index) => (index % 2 ? 12 : -12),
+        y: 68,
+        z: -150,
+        scale: 0.9,
+        rotationX: 15,
         autoAlpha: 0,
         transformOrigin: "50% 100%",
       }, {
         y: 0,
         z: 0,
         scale: 1,
-        rotationY: 0,
+        rotationX: 0,
         autoAlpha: 1,
-        duration: 0.82,
-        stagger: 0.1,
-        ease: "back.out(1.55)",
-      }, 0.82)
-      .to(mark, { y: -22, z: 80, scale: 1.12, autoAlpha: 0, duration: 0.42, ease: "power3.in" }, 0.76)
-      .to(overlay, { autoAlpha: 0, duration: 0.38, ease: "power2.in" }, 1.18);
+        duration: 0.76,
+        stagger: 0.085,
+        ease: "back.out(1.35)",
+      }, 0.76)
+      .to(glyphs, {
+        x: (index) => (index ? Math.min(180, window.innerWidth * 0.44) : -Math.min(180, window.innerWidth * 0.44)),
+        y: (index) => (index ? -36 : 42),
+        scale: 1.24,
+        rotation: (index) => (index ? -7 : 8),
+        autoAlpha: 0,
+        duration: 0.52,
+        ease: "power3.in",
+      }, 0.68)
+      .to(copy, { y: -12, autoAlpha: 0, duration: 0.28, ease: "power2.in" }, 0.72)
+      .to(orbits, { scale: 2.7, rotation: "+=70", autoAlpha: 0, duration: 0.58, ease: "power3.in" }, 0.68)
+      .to(lens, { scale: 5.8, rotation: 18, autoAlpha: 0, duration: 0.64, ease: "expo.in" }, 0.66)
+      .to(ambient, { xPercent: 48, yPercent: -28, scale: 1.7, autoAlpha: 0, duration: 0.58, ease: "power2.in" }, 0.74)
+      .to(overlay, { scale: 1.035, autoAlpha: 0, duration: 0.46, ease: "power2.inOut" }, 0.94);
     window.clearTimeout(cinematicIntroSafetyTimer);
     cinematicIntroSafetyTimer = window.setTimeout(() => {
       if (html.dataset.gsapIntro !== "playing") return;
@@ -479,7 +523,7 @@
         delete hero.dataset.gsapCinematic;
         finishCinematicIntro();
       }
-    }, 2600);
+    }, 2400);
     return timeline;
   }
 

@@ -20,6 +20,9 @@ assert.match(serviceWorkerSource, /gsap\.min\.js/);
 assert.match(serviceWorkerSource, /Flip\.min\.js/);
 assert.match(serviceWorkerSource, /ScrollTrigger\.min\.js/);
 assert.match(serviceWorkerSource, /gsap-motion\.js/);
+assert.match(source, /gsap-cinematic-lens/);
+assert.match(source, /gsap-cinematic-glyphs/);
+assert.doesNotMatch(source, /DAILY RITUAL|CHONG LE MEI|gsap-cinematic-shutter/);
 
 const dom = new JSDOM(`<!doctype html><html><body>
   <div id="root">
@@ -184,6 +187,7 @@ assert.equal(window.document.documentElement.dataset.gsapMotion, "full");
 assert.equal(window.document.documentElement.dataset.gsapIntro, "complete");
 assert.equal(window.document.querySelector(".gsap-cinematic-intro"), null, "the cinematic overlay should clean itself up");
 assert.ok(calls.some((call) => call.type === "timeline-fromTo" && call.target === window.document.querySelector(".hero h1")));
+assert.ok(calls.some((call) => call.type === "timeline-fromTo" && call.target?.classList?.contains("gsap-cinematic-lens")));
 assert.ok(calls.some((call) => call.type === "register" && call.plugin === window.Flip));
 assert.ok(calls.some((call) => call.type === "register" && call.plugin === window.ScrollTrigger));
 assert.ok(calls.some((call) => call.type === "matchMedia" && "reduceMotion" in call.conditions));
