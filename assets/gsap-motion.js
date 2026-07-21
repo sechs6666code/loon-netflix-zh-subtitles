@@ -328,7 +328,7 @@
     html.dataset.gsapIntro = reducedMotion ? "reduced" : "complete";
     topbar?.classList.remove("motion-card", "motion-enter");
     hero?.classList.remove("motion-card", "motion-enter");
-    gsap.set(targets, { clearProps: "transform,opacity,visibility,transformOrigin,transformStyle" });
+    gsap.set(targets, { clearProps: "transform,opacity,visibility,transformOrigin,transformStyle,clipPath" });
   }
 
   function runCinematicIntro() {
@@ -355,24 +355,19 @@
     overlay.className = "gsap-cinematic-intro";
     overlay.setAttribute("aria-hidden", "true");
     overlay.innerHTML = `
-      <i class="gsap-cinematic-ambient"></i>
-      <span class="gsap-cinematic-glyphs"><b>今</b><b>日</b></span>
-      <span class="gsap-cinematic-orbits"><i></i><i></i><i></i></span>
-      <span class="gsap-cinematic-lens"><i></i><b></b><em></em></span>
-      <i class="gsap-cinematic-scan"></i>
-      <span class="gsap-cinematic-copy"><b>今天</b><small>如实记录</small></span>
+      <i class="gsap-cinematic-veil"></i>
+      <i class="gsap-cinematic-bloom"></i>
+      <span class="gsap-cinematic-refraction"><i></i><i></i></span>
+      <i class="gsap-cinematic-edge"></i>
     `;
     document.body.append(overlay);
     cinematicIntroElement = overlay;
 
-    const ambient = overlay.querySelector(".gsap-cinematic-ambient");
-    const glyphs = Array.from(overlay.querySelectorAll(".gsap-cinematic-glyphs > b"));
-    const orbits = Array.from(overlay.querySelectorAll(".gsap-cinematic-orbits > i"));
-    const lens = overlay.querySelector(".gsap-cinematic-lens");
-    const lensLayers = Array.from(lens?.children || []);
-    const scan = overlay.querySelector(".gsap-cinematic-scan");
-    const copy = overlay.querySelector(".gsap-cinematic-copy");
-    const copyParts = Array.from(copy?.children || []);
+    const veil = overlay.querySelector(".gsap-cinematic-veil");
+    const bloom = overlay.querySelector(".gsap-cinematic-bloom");
+    const refraction = overlay.querySelector(".gsap-cinematic-refraction");
+    const refractionEdges = Array.from(refraction?.children || []);
+    const edge = overlay.querySelector(".gsap-cinematic-edge");
     const targets = [topbar, date, title, subline, ...answers];
     gsap.killTweensOf(targets);
     gsap.set([hero, ...targets], { transformPerspective: 1200, transformStyle: "preserve-3d" });
@@ -392,103 +387,84 @@
     cinematicIntroTimeline = timeline;
     timeline
       .fromTo(overlay, { autoAlpha: 1 }, { autoAlpha: 1, duration: 0.01 }, 0)
-      .fromTo(ambient, { xPercent: -34, yPercent: 20, scale: 0.48, rotation: -22, autoAlpha: 0 }, {
-        xPercent: 18,
-        yPercent: -12,
-        scale: 1.08,
-        rotation: 18,
-        autoAlpha: 1,
-        duration: 1.18,
-        ease: "expo.out",
-      }, 0)
-      .fromTo(glyphs, {
-        x: (index) => (index ? Math.min(150, window.innerWidth * 0.38) : -Math.min(150, window.innerWidth * 0.38)),
-        y: (index) => (index ? 28 : -34),
-        z: -220,
+      .fromTo(veil, { autoAlpha: 1 }, {
+        autoAlpha: 0.18,
+        duration: 0.82,
+        ease: "power2.inOut",
+      }, 0.08)
+      .fromTo(bloom, { xPercent: -42, yPercent: 28, scale: 0.62, rotation: -14, autoAlpha: 0 }, {
+        xPercent: 34,
+        yPercent: -24,
         scale: 1.28,
-        rotation: (index) => (index ? 10 : -11),
-        autoAlpha: 0,
-      }, {
-        x: 0,
-        y: 0,
-        z: 0,
-        scale: 1,
-        rotation: 0,
-        autoAlpha: 1,
-        duration: 0.76,
-        stagger: 0.055,
-        ease: "expo.out",
+        rotation: 18,
+        autoAlpha: 0.72,
+        duration: 1.08,
+        ease: "expo.inOut",
+      }, 0)
+      .fromTo(refraction, { xPercent: -280, rotation: -16, scaleX: 0.52, autoAlpha: 0 }, {
+        xPercent: 280,
+        rotation: 7,
+        scaleX: 1.08,
+        autoAlpha: 0.92,
+        duration: 1.08,
+        ease: "expo.inOut",
       }, 0.02)
-      .fromTo(lens, { scale: 0.08, rotation: -38, autoAlpha: 0 }, {
-        scale: 1,
-        rotation: 0,
-        autoAlpha: 1,
-        duration: 0.72,
-        ease: "back.out(1.3)",
-      }, 0.12)
-      .fromTo(lensLayers, { scale: 0.45, rotation: -24, autoAlpha: 0 }, {
-        scale: 1,
-        rotation: 0,
-        autoAlpha: 1,
-        duration: 0.66,
-        stagger: 0.06,
-        ease: "expo.out",
-      }, 0.2)
-      .fromTo(orbits, { scale: 0.18, rotation: -45, autoAlpha: 0 }, {
-        scale: (index) => 1 + index * 0.24,
-        rotation: (index) => 42 + index * 24,
-        autoAlpha: (index) => 0.55 - index * 0.13,
-        duration: 0.88,
-        stagger: 0.055,
-        ease: "expo.out",
-      }, 0.1)
-      .fromTo(scan, { xPercent: -190, scaleX: 0.18, autoAlpha: 0 }, {
+      .fromTo(refractionEdges, { scaleY: 0.35, autoAlpha: 0 }, {
+        scaleY: 1,
+        autoAlpha: 0.72,
+        duration: 0.46,
+        stagger: 0.08,
+        ease: "power3.out",
+      }, 0.16)
+      .fromTo(edge, { xPercent: -190, scaleX: 0.28, autoAlpha: 0 }, {
         xPercent: 190,
         scaleX: 1,
-        autoAlpha: 0.86,
-        duration: 0.82,
+        autoAlpha: 0.74,
+        duration: 0.78,
         ease: "expo.inOut",
-      }, 0.18)
-      .fromTo(copyParts, { y: 16, autoAlpha: 0 }, {
-        y: 0,
-        autoAlpha: 1,
-        duration: 0.42,
-        stagger: 0.07,
-      }, 0.28)
-      .fromTo(topbar, { y: -28, z: -90, autoAlpha: 0 }, {
+      }, 0.1)
+      .fromTo(topbar, { y: -24, z: -70, autoAlpha: 0 }, {
         y: 0,
         z: 0,
         autoAlpha: 1,
-        duration: 0.64,
-      }, 0.52)
-      .fromTo(date, { y: -24, z: -110, rotationX: 56, autoAlpha: 0 }, {
+        duration: 0.58,
+      }, 0.08)
+      .fromTo(date, { y: -20, z: -90, rotationX: 48, autoAlpha: 0 }, {
         y: 0,
         z: 0,
         rotationX: 0,
         autoAlpha: 1,
-        duration: 0.66,
-        ease: "back.out(1.25)",
-      }, 0.58)
-      .fromTo(title, { y: 48, z: -180, scale: 0.86, rotationX: 14, autoAlpha: 0 }, {
+        duration: 0.6,
+        ease: "back.out(1.2)",
+      }, 0.12)
+      .fromTo(title, {
+        y: 38,
+        z: -150,
+        scale: 0.9,
+        rotationX: 12,
+        autoAlpha: 0,
+        clipPath: "inset(0 0 100% 0)",
+      }, {
         y: 0,
         z: 0,
         scale: 1,
         rotationX: 0,
         autoAlpha: 1,
-        duration: 0.82,
+        clipPath: "inset(0 0 0% 0)",
+        duration: 0.76,
         ease: "expo.out",
-      }, 0.6)
-      .fromTo(subline, { y: 18, z: -70, autoAlpha: 0 }, {
+      }, 0.16)
+      .fromTo(subline, { y: 16, z: -60, autoAlpha: 0 }, {
         y: 0,
         z: 0,
         autoAlpha: 1,
-        duration: 0.54,
-      }, 0.72)
+        duration: 0.5,
+      }, 0.26)
       .fromTo(answers, {
-        y: 68,
-        z: -150,
-        scale: 0.9,
-        rotationX: 15,
+        y: 54,
+        z: -120,
+        scale: 0.92,
+        rotationX: 11,
         autoAlpha: 0,
         transformOrigin: "50% 100%",
       }, {
@@ -497,24 +473,15 @@
         scale: 1,
         rotationX: 0,
         autoAlpha: 1,
-        duration: 0.76,
-        stagger: 0.085,
-        ease: "back.out(1.35)",
-      }, 0.76)
-      .to(glyphs, {
-        x: (index) => (index ? Math.min(180, window.innerWidth * 0.44) : -Math.min(180, window.innerWidth * 0.44)),
-        y: (index) => (index ? -36 : 42),
-        scale: 1.24,
-        rotation: (index) => (index ? -7 : 8),
-        autoAlpha: 0,
-        duration: 0.52,
-        ease: "power3.in",
-      }, 0.68)
-      .to(copy, { y: -12, autoAlpha: 0, duration: 0.28, ease: "power2.in" }, 0.72)
-      .to(orbits, { scale: 2.7, rotation: "+=70", autoAlpha: 0, duration: 0.58, ease: "power3.in" }, 0.68)
-      .to(lens, { scale: 5.8, rotation: 18, autoAlpha: 0, duration: 0.64, ease: "expo.in" }, 0.66)
-      .to(ambient, { xPercent: 48, yPercent: -28, scale: 1.7, autoAlpha: 0, duration: 0.58, ease: "power2.in" }, 0.74)
-      .to(overlay, { scale: 1.035, autoAlpha: 0, duration: 0.46, ease: "power2.inOut" }, 0.94);
+        duration: 0.7,
+        stagger: 0.08,
+        ease: "back.out(1.28)",
+      }, 0.34)
+      .to(refraction, { autoAlpha: 0, duration: 0.2, ease: "power2.in" }, 0.88)
+      .to(edge, { autoAlpha: 0, duration: 0.16 }, 0.82)
+      .to(bloom, { scale: 1.55, autoAlpha: 0, duration: 0.42, ease: "power2.in" }, 0.72)
+      .to(veil, { autoAlpha: 0, duration: 0.3, ease: "power2.in" }, 0.7)
+      .to(overlay, { autoAlpha: 0, duration: 0.32, ease: "power2.inOut" }, 0.9);
     window.clearTimeout(cinematicIntroSafetyTimer);
     cinematicIntroSafetyTimer = window.setTimeout(() => {
       if (html.dataset.gsapIntro !== "playing") return;
@@ -523,7 +490,7 @@
         delete hero.dataset.gsapCinematic;
         finishCinematicIntro();
       }
-    }, 2400);
+    }, 2100);
     return timeline;
   }
 
